@@ -1,0 +1,46 @@
+ /* override styles here */
+
+#codeedit {
+	 height: 70vh;
+ width: 100%;
+    overflow-y: scroll;
+}
+
+#codeedit pre {
+  margin: 0px;
+  padding: 0.0em;
+}
+
+.cecomment {
+  margin: 0px;
+  padding: 0.0em;
+}
+
+.cecomment pre {
+  margin: 0px;
+  padding: 0.0em;
+  background:#c22;color:#f3f0f0;
+
+vertical-align: top;
+
+white-space: pre-wrap;
+white-space: -moz-pre-wrap;
+white-space: -pre-wrap;
+white-space: -o-pre-wrap;
+   word-wrap: anywhere;
+}
+
+.hljs {
+	font-family: "Courier New",monospace;
+	font-size: 0.9em;
+	white-space: pre-wrap;
+white-space: -moz-pre-wrap;
+white-space: -pre-wrap;
+white-space: -o-pre-wrap;
+   word-wrap: anywhere;
+}
+
+.hljs-ln-numbers {
+	  width: 5%;
+	  color: #AAA;
+	}

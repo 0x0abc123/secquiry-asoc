@@ -1,0 +1,66 @@
+import uuid
+
+PROP_UID = "uid"
+PROP_TYPE = "ty"
+PROP_LABEL = "l"
+PROP_DETAIL = "d"
+PROP_TEXTDATA = "x"
+PROP_CUSTOM = "c"
+PROP_TIME = "t"
+PROP_LASTMOD = "m"
+PROP_BINARYDATA = "b"
+PROP_EDITING = "e"
+PROP_PARENTLIST = "in"
+PROP_CHILDLIST = "out"
+PROP_RELATIONS = "lnk"
+
+TYPE_CLIENT = "Client"
+TYPE_PROJECT = "Project"
+TYPE_FOLDER = "Folder"
+TYPE_HOST = "Host"
+TYPE_PORT = "Port"
+TYPE_TEXT = "Text"
+TYPE_IMAGE = "Image"
+TYPE_FILE = "File"
+TYPE_NOTE = "Note"
+TYPE_CODE = "Code"
+TYPE_TABLE = "Table"
+TYPE_ANNOTATION = "Annotation"
+TYPE_TAG = "Tag"
+TYPE_REPORT = "Report"
+TYPE_SECTION = "Section"
+TYPE_FINDINGS = "Findings"
+TYPE_JSON = "Json"
+TYPE_MARKDOWN = "Markdown"
+
+class Node:
+    
+    def __init__(self, _type):
+        self.Type = _type
+        self.Children = []
+        self.ParentUids = []  # list of UIDs, whereas self.Children is a list of Node instances
+        self.UID = str(uuid.uuid4())
+        self.Label = ''
+        self.Detail = ''
+        self.CustomData = ''
+        self.TextData = ''
+
+    
+    def convert(self):
+        apiFormatNode = {}
+        apiFormatNode[PROP_UID] = self.UID
+        apiFormatNode[PROP_TYPE] = self.Type
+        apiFormatNode[PROP_LABEL] = self.Label
+        apiFormatNode[PROP_DETAIL] = self.Detail
+        apiFormatNode[PROP_TEXTDATA] = self.TextData
+        apiFormatNode[PROP_CUSTOM] = self.CustomData
+        #only need to specify the parent UID for the node if it doesn't have a UID yet (i.e. creating a new node)
+        apiFormatNode[PROP_PARENTLIST] = [{PROP_UID : self.ParentUids[0]}] if (len(self.ParentUids) > 0) else []
+        apiFormatNode[PROP_CHILDLIST] = [{PROP_UID : child.UID} for child in self.Children]
+        return apiFormatNode
+        
+def recursiveConvertNodesToAPIFormat(node, listToAddTheNodeTo):
+    listToAddTheNodeTo.append(node.convert())
+    for child in node.Children:
+        recursiveConvertNodesToAPIFormat(child, listToAddTheNodeTo)
+

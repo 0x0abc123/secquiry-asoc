@@ -1,0 +1,149 @@
+@font-face {
+  font-family: "archivo-regular";
+  src: url("/Archivo-Regular.woff");
+} 
+
+body {
+ font-family: archivo-regular;
+}
+
+.ctxmenu {
+  cursor: context-menu;
+  position: absolute;
+  z-index: 100;
+}
+.ctxmenu li {
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+}
+.ctxmenu li:hover{
+	background: #aaaaaa;
+	color: #eeeeee;
+}
+
+
+.jexcel {
+font-family: "archivo-regular",arial, sans-serif;
+}
+#jexcel {
+ height: 65vh;
+ width: 100%;
+    overflow-y: scroll;
+}
+
+.brk {
+  word-wrap: anywhere;
+}
+.mono {
+font-family: monospace;
+white-space: pre-wrap;
+white-space: -moz-pre-wrap;
+white-space: -pre-wrap;
+white-space: -o-pre-wrap;
+word-wrap: anywhere;
+}
+.ptr { cursor: pointer; }
+.arrow { cursor: context-menu; }
+.bold { font-weight: bold; }
+.drag { cursor: move; }
+
+.spacer5px { height: 5px; }
+
+.sidenavbar {
+ height: 75vh;
+ overflow-y: scroll;
+}
+
+.tooloutput {
+}
+.mpprojects {
+}
+.fullw { width: 100%; }
+
+
+.inln {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.nowrap {
+  white-space: pre;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+ 
+::-webkit-scrollbar-thumb {
+  background: #888; 
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555; 
+}
+
+/**********************************/
+/*  draggable pane layout stuff   */
+/**********************************/
+#body_container {
+  display: grid;
+  height: 100vh;
+  grid-template-columns: 1fr;
+  grid-template-rows: min-content 1fr min-content;
+  grid-template-areas:
+        "header"
+        "main"
+        "footer";
+
+}
+#topnavbar {
+  grid-area: header;
+}
+#pageFrame {
+  grid-area: main;
+    overflow: hidden;
+}
+#bottomnavbar {
+  grid-area: footer;
+}
+
+#page {
+  //height: 90vh;
+
+  height: 100%;
+  display: grid;
+  grid-template-areas: 'left_pane dragbar right_pane';
+  grid-template-rows: 10fr;
+  grid-template-columns: 2fr 6px 6fr;
+}
+
+#left_pane {
+ // overflow: auto;
+  grid-area: left_pane;
+   overflow-y: scroll;
+	height: 100%;
+}
+
+#dragbar {
+  background-color: #dddddd;
+  grid-area: dragbar;
+  cursor: ew-resize;
+}
+
+#right_pane {
+  //overflow: auto;
+  grid-area: right_pane;
+   overflow-y: scroll;
+	height: 100%;
+}
+
+#modal_div {
+//	  z-index: 100;
+//	position: absolute;
+//	top: 0px;
+//	left: 0px;
+}
