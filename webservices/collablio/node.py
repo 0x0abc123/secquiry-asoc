@@ -32,6 +32,7 @@ TYPE_SECTION = "Section"
 TYPE_FINDINGS = "Findings"
 TYPE_JSON = "Json"
 TYPE_MARKDOWN = "Markdown"
+TYPE_TASK = "Task"
 
 class Node:
     

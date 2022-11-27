@@ -4,6 +4,8 @@ from fastapi import FastAPI, Header, Depends, HTTPException, UploadFile, Form, R
 import importers
 import importlib
 import json
+import multiprocessing
+import tasksched
 
 def auth_check(x_value: str = Header(default='x')):
     print('auth_check: '+x_value)
@@ -15,6 +17,11 @@ def auth_check(x_value: str = Header(default='x')):
 # or see individual path dependencies with /headertest2 endpoint
 #app = FastAPI(dependencies=[Depends(auth_check)])
 app = FastAPI()
+
+
+# launch tasksched
+t = multiprocessing.Process(target=tasksched.run)
+t.start()
 
 
 # load plugins

@@ -187,7 +187,8 @@ let rootConfig =
 		actionViewConf: { paneType: "default", config: getDefaultConfig('view') },
 		actionAddConf: { paneType: "default", config: getDefaultConfig('add') },
 		actionEditConf: { paneType: "default", config: getDefaultConfig('edit') },
-		iconClassName: 'ico-folder'
+		iconClassName: 'ico-folder',
+		showChildren: true
 }
 _typeConfigs[TYPE_ROOT] = rootConfig;
 
@@ -213,7 +214,8 @@ function createTypeConfigWithDefaults(
 	newTC.actionMoveChildrenConf = (movechildren) ? { paneType: "default", config: {} } : null;
 	newTC.iconClassName = iconClass || 'ico-miscfile';
 	newTC.getValueForSorting = ((node) => {	return node[PROP_LABEL]; })
-
+	newTC.showChildren = true;
+	
 	if(canAddToTopLevel) 
 		rootConfig.typesAllowedForChildNodes.add(typename);
 	_typeConfigs[typename] = newTC;
@@ -292,8 +294,8 @@ createTypeConfigWithDefaults(TYPE_AGENT, [],'ico-send',false,'default','default'
 createTypeConfigWithDefaults(TYPE_SERVICE, [],'ico-send',false,'default','default','default');
 createTypeConfigWithDefaults(TYPE_JSON, [TYPE_ANNOTATION],'ico-miscfile',false,'json',null,null);
 createTypeConfigWithDefaults(TYPE_MARKDOWN, [TYPE_ANNOTATION],'ico-miscfile',false,'textbody',null,null);
-createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION],'ico-miscfile',false,'findings',null,null);
-
+let c_findings = createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION],'ico-miscfile',false,'findings',null,null);
+c_findings.showChildren = false;
 
 // About config.nodeinfo
 // we don't bind the collablio node data directly to a Vue component (eg. the node type's add, edit, view UIs)
@@ -988,6 +990,7 @@ async function fileupload(node)
 // the node cannot be an empty node because the import needs to be created under a parent node
 async function importupload(importer,uid)
 {
+	showLoading(true);
 	const input = document.getElementById('import_file');
 
 	let params = {};
@@ -1016,6 +1019,7 @@ async function importupload(importer,uid)
 			}
 		}).catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
 	
+	showLoading(false);
 	await refreshNodes();
 }
 
@@ -1261,7 +1265,7 @@ function updateNodeTree(serverResponse)
 			incomingNode.hasChanged = true;
 			incomingNode.isViewed = false;
 			incomingNode.isOpen = false;
-			incomingNode.showChildren = (incomingNode[PROP_TYPE] != TYPE_FINDINGS); 
+			incomingNode.showChildren = _typeConfigs[incomingNode[PROP_TYPE]].showChildren; 
 			_index[incomingNode.uid] = incomingNode;
 		}
 	}

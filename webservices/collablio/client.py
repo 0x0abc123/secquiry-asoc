@@ -13,6 +13,16 @@ import collablio.node as cnode
 # todo: load from config file
 COLLABLIO_HOST = "http://127.0.0.1:5000"
 
+
+def LoginAndGetToken(username, password):
+    loginData = {'username':username,'password':password}
+    serialisedJson = json.dumps(loginData).encode('utf8')
+    req = urllib.request.Request(COLLABLIO_HOST+'/login', data=serialisedJson, headers={'content-type': 'application/json'})
+    response = urllib.request.urlopen(req)
+    # should return list of uids
+    responsedata = json.loads(response.read().decode('utf8'))
+    return responsedata['token']
+
 class Client:
 
     def __init__(self, _auth_token_hdr_val):
