@@ -406,6 +406,12 @@
 					<p class="subtitle">Import</p>
 					<span><a class="button is-primary" @click="clickImport($event,v.config.nodeinfo.uid)">Import Tool Output</a></span>
 				  </div>
+				  <div class="box" v-if="v.config.generators">
+					<p class="subtitle">Generate</p>
+					<div v-for="(generator, index) in v.config.generators" class="mb-1">
+						<span><a class="button is-primary" @click="clickGenerate($event,generator.id,v.config.nodeinfo.uid)">{{generator.btnLabel}}</a></span>
+					</div>
+				  </div>
 				  <div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
 					<p class="subtitle">List of Child Items</p>
 					<div v-for="(child, index) in v.config.nodeinfo.outrefs" class="mb-1">
@@ -563,7 +569,38 @@
 			<div id="jexcel"></div> 
 		</div>	 
 	 
-	 
+		<div id="edit_task" style="display: none">
+		<!--////VueBinding////-->
+		 <div id="v_edit_task">
+			<h1 class="title">Edit Task</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Label</label><div class="control"><input class="input" type="text" placeholder="Short Name" v-model="v.config.nodeinfo.l" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Short Description</label><div class="control"><input class="input is-success" type="text" placeholder="Description" v-model="v.config.nodeinfo.d" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Task Metadata (JSON)</label><div class="control"><textarea class="textarea" placeholder="notes area" v-model="v.config.nodeinfo.c" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Task Data (JSON)</label><div class="control"><textarea class="textarea" placeholder="text data" v-model="v.config.nodeinfo.x" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field is-grouped">
+				  <div class="control"><button class="button is-link" @click="vSubmit()">Save</button></div>
+				  <div class="control"><button class="button is-link is-light" @click="vCancel()">Cancel</button></div>
+				</div>
+				
+			  </div>
+			</div>
+		 </div>
+		</div><!-- end main_pane -->	 
 	 
 		<div id="edit_testform" style="display: none">
 		<!--////VueBinding////-->
@@ -724,6 +761,34 @@
 <div id="modal_div" class="modal">
   <div class="modal-background"></div>
   <div class="modal-card">
+
+
+    <!--div for modal pane-->
+	<div id="add_generator" style="display: none">
+	 <div id="v_add_generator"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Generator Options</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+
+
+		<section class="modal-card-body">
+
+			<div class="field">
+			  <label class="label">Custom Data Field (JSON)</label><div class="control"><textarea class="textarea" placeholder="Generator Params JSON" v-model="v.config.params"></textarea></div>
+			</div>
+
+
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Upload File</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->
+
 
     <!--div for modal pane-->
 	<div id="import_fileupload" style="display: none">
@@ -909,6 +974,35 @@
 	 </div>
     </div><!--end modal pane-->	
 
+
+
+    <!--div for modal pane-->
+	<div id="add_task" style="display: block">
+	 <div id="v_add_task"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Enter a Title for New Task</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+		<section class="modal-card-body">
+	  		<h1 class="title">{{v.config.title}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Task Name</label><div class="control"><input class="input" type="text" placeholder="Client Short Name" v-model="v.config.nodeinfo.l"></div>
+				</div>
+				
+			  </div>
+			</div>
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Create Task</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->	
 	
   <button onclick="toggleModal()" class="modal-close is-large" aria-label="close"></button>
  </div>

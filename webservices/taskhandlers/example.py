@@ -1,35 +1,23 @@
 #an integration is a plugin that executes a binary on the operating system that this agent is running on and turns its output into Nodes that are ingested by Secquiry
 
 import collablio.node as cnode
+import collablio.client as cclient
 import filereadutils
 import json
 
 
-async def do_import(fileToImport, metadata_json):
-  n = cnode.Node(cnode.TYPE_TEXT)
-  '''
-  contents = ''
-  await fileToImport.seek(0)
-  while True:
-    line = await fileToImport.read(1024)
-    if not line:
-        break
-    contents += line.decode('utf-8')
-  '''
-  contents = await filereadutils.getLinesOfTextFromFileUpload(fileToImport)
-  for line in contents:
-    print(line)
-  n.CustomData = metadata_json['under_uid']
-  n.TextData = contents
-  nl = []
+def fetch_body_required():
+    return True
 
-  cnode.recursiveConvertNodesToAPIFormat(n,nl)
-  print('do_import: '+json.dumps(nl))
-
-  if 'xml' in metadata_json:
-    xmlroot = await filereadutils.getXMLTreeFromFileUpload(fileToImport)
-    print(xmlroot)
-
-  return {"status":"OK","detail":"Imported Successfully"}
-  #return nl
-
+def do_task(tasknode, params, client):
+    #n = cnode.Node(cnode.TYPE_TEXT)
+    #params = json.loads(tasknode[cnode.PROP_TEXTDATA])
+    params['run_by'] = 'example'
+    runNode = cnode.Node(cnode.TYPE_JSON)
+    runNode.Label = 'Task Result'
+    runNode.Detail = 'Example Task Run Details'
+    runNode.TextData = json.dumps(params)
+    # just return list of new nodes to be added as children under the task node, these steps will be done by tasksched:
+    #runNode.ParentUids.append(tasknode[cnode.PROP_UID])
+    #client.upsertNodes([runNode])    
+    return {"nodes":[runNode], "status":"ok", "reason":""}

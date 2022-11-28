@@ -285,11 +285,13 @@ createTypeConfigWithDefaults(TYPE_NOTE, [TYPE_ANNOTATION],'ico-note',false,'edit
 createTypeConfigWithDefaults(TYPE_TABLE, [TYPE_ANNOTATION],'ico-table',false,'table','table','table');
 createTypeConfigWithDefaults(TYPE_ANNOTATION, [],'ico-info',false,null,null,'default');
 createTypeConfigWithDefaults(TYPE_TAG, [TYPE_FOLDER, TYPE_CLIENT, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_ANNOTATION, TYPE_FILE, TYPE_IMAGE, TYPE_TAG, TYPE_HOST, TYPE_PORT, TYPE_REPORT],'ico-tag',false);
-createTypeConfigWithDefaults(TYPE_REPORT, [TYPE_SECTION, TYPE_JOBREQ],'ico-report',false);
+let c_report = createTypeConfigWithDefaults(TYPE_REPORT, [TYPE_SECTION, TYPE_JOBREQ],'ico-report',false);
+c_report.actionViewConf.config.generators = [{'id':'report','btnLabel':'Generate Report'}];
+
 createTypeConfigWithDefaults(TYPE_SECTION, [TYPE_SECTION, TYPE_NOTE, TYPE_TABLE, TYPE_ANNOTATION, TYPE_FILE, TYPE_TEXT, TYPE_IMAGE],'ico-mark',false);
 createTypeConfigWithDefaults(TYPE_JOBREQ, [],'ico-send',false,'default','default','default');
 createTypeConfigWithDefaults(TYPE_CODE, [TYPE_ANNOTATION],'ico-miscfile',false,'codeedit',null,'codeedit');
-createTypeConfigWithDefaults(TYPE_TASK, [],'ico-send',false,'default','default','testtaskagent');
+createTypeConfigWithDefaults(TYPE_TASK, [],'ico-send',false,'textbody','task','task');
 createTypeConfigWithDefaults(TYPE_AGENT, [],'ico-send',false,'default','default','testtaskagent');
 createTypeConfigWithDefaults(TYPE_SERVICE, [],'ico-send',false,'default','default','default');
 createTypeConfigWithDefaults(TYPE_JSON, [TYPE_ANNOTATION],'ico-miscfile',false,'json',null,null);
@@ -401,7 +403,7 @@ var _panesIndex = {
 				//need to fetch attachment body and populate viewer
 				let nodeInfo = this.v.config.nodeinfo;
 				await updateAttachmentNodeIfChangedOrEmpty(nodeInfo);
-				console.log('json.onBeforeShow:',nodeInfo[PROP_TEXTDATA]);
+				//console.log('json.onBeforeShow:',nodeInfo[PROP_TEXTDATA]);
 				setJSON(JSON.parse(nodeInfo[PROP_TEXTDATA]));
 			},
 		},
@@ -540,7 +542,34 @@ var _panesIndex = {
 				jexcelGlobal.CurrentUid = nodeInf[PROP_UID];
 			},		
 		},
-	},
+		"task" : {
+			divID: "edit_task",
+			v: { config:  getDefaultConfig('edit')},
+			onBeforeCopyNode: async function(){
+				//need to fetch attachment body if its not there or it needs an update
+				await updateAttachmentNodeIfChangedOrEmpty(this.v.config.nodeinfo);
+			},
+			onBeforeShow: function(){
+				//populateJexcel(this.v.config.nodeinfo);
+				//setJexcelVisualState("enable");
+				warnOnNavigateAway = true;
+			},
+			onAfterSubmit: async function(){
+				let nodeInf = this.v.config.nodeinfo;
+				//getJexcelEdits(nodeInf);
+				let x_changed = (nodeInf[PROP_TEXTDATA] != _index[nodeInf[PROP_UID]][PROP_TEXTDATA]);
+				let l_changed = (nodeInf[PROP_LABEL] != _index[nodeInf[PROP_UID]][PROP_LABEL]);
+				let c_changed = (nodeInf[PROP_CUSTOM] != _index[nodeInf[PROP_UID]][PROP_CUSTOM]);
+				let d_changed = (nodeInf[PROP_DETAIL] != _index[nodeInf[PROP_UID]][PROP_DETAIL]);
+				if(!x_changed)
+					nodeInf[PROP_TEXTDATA] = null;
+				if(x_changed || l_changed || c_changed || d_changed)
+					await upsertGeneric(nodeInf);
+				//setJexcelVisualState("disable");
+				warnOnNavigateAway = false;
+				//jexcelGlobal.CurrentUid = nodeInf[PROP_UID];
+			},		
+		},	},
 	//modal dialog views:
 	add: {
 		"default" : {
@@ -561,6 +590,12 @@ var _panesIndex = {
 			onBeforeShow: function(){clearImportUploadFormInput();},
 			onAfterSubmit: async function(){ await importupload(this.v.config.importer, this.v.config.under_uid);},
 			},
+		"generator" : {
+			divID: "add_generator",
+			v: { config:  getDefaultConfig('add')},
+			onBeforeShow: function(){},
+			onAfterSubmit: async function(){ await generate(this.v.config.generator, this.v.config.params, this.v.config.under_uid);},
+			},
 		"editor" : { //we show a dialog to enter the note name, create the empty note and show the actual editor
 			divID: "add_editor",
 			v: { config:  getDefaultConfig('add')},
@@ -573,6 +608,16 @@ var _panesIndex = {
 			},
 		"table" : { //we show a dialog to enter the table name, create the empty grid and show the actual editor
 			divID: "add_table",
+			v: { config:  getDefaultConfig('add')},
+			onBeforeShow: function(){},
+			onAfterSubmit: async function(){
+				let ninfo = this.v.config.nodeinfo;
+				await upsertGeneric(ninfo); 
+				v_action_funcs['edit'](ninfo[PROP_UID]);
+				},
+			},
+		"task" : { //we show a dialog to enter the table name, create the empty grid and show the actual editor
+			divID: "add_task",
 			v: { config:  getDefaultConfig('add')},
 			onBeforeShow: function(){},
 			onAfterSubmit: async function(){
@@ -1004,6 +1049,41 @@ async function importupload(importer,uid)
 	data.append('metadata', JSON.stringify(params));
 
 	await fetch('/webservice/import/'+importer, {
+		method: 'POST',
+		//mode: 'no-cors', //for testing with httpbin
+		//!!important: don't set the content-type
+		headers: {
+			'Authorization': getBearerTokenHeader()
+		},
+		body: data
+	  }).then(response => { if(!response.ok) { throw new Error(response.status); }; return response.text(); })
+	  .then( response => {
+			if(response.startsWith('0x'))
+			{
+				_index[response] = emptyNode(response);
+			}
+		}).catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
+	
+	showLoading(false);
+	await refreshNodes();
+}
+
+
+// called from generate pane onAfterSubmit() hook
+// the node cannot be an empty node because the generated node needs to be created under a parent node
+async function generate(generator,serialized_params, uid)
+{
+	showLoading(true);
+
+	let params = JSON.parse(serialized_params);//{};
+	//if(node[PROP_UID])
+	params.under_uid = uid;
+	params.generator = generator;
+	//params.under_uid = node[PROP_PARENTLIST][0].uid;
+	
+	let data = JSON.stringify(params);
+
+	await fetch('/webservice/generate/'+generator, {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1484,6 +1564,13 @@ var v_action_funcs = {
 		await _panesIndex.add['importupload'].onBeforeShow();
 		switchPane('add','importupload');
 	},
+	generate: async function (generator,_uid) { 		
+		_panesIndex.add['generator'].v.config.under_uid = _uid;
+		_panesIndex.add['generator'].v.config.generator = generator;
+		//_panesIndex.add['importupload'].v.config.importer = 'example';
+		await _panesIndex.add['generator'].onBeforeShow();
+		switchPane('add','generator');
+	},
 	edit: async function (uid) { 
 		let n = _index[uid];
 		let tc = _typeConfigs[(n[PROP_TYPE] || "unknown")] || _typeConfigs.unknown;
@@ -1681,6 +1768,9 @@ var v_view_default = new Vue({
 			if(historyPush(HISTORY_VIEWNODE,id))
 				v_action_funcs['import'](id);
 		},
+		clickGenerate: function(e, gen_id, uid) {
+			v_action_funcs['generate'](gen_id,uid);
+		},
 		startDrag: function(evt,id) {
 			startDragging(evt, id, 'move');
 		},
@@ -1799,6 +1889,24 @@ var v_edit_default = new Vue({
 	}
 });
 
+// task edit component
+var v_edit_task = new Vue({
+	el: '#v_edit_task',
+	data: { 
+	   v: _panesIndex['edit']['task'].v
+	},
+	methods : {
+		vSubmit :  function(){ 
+			handleSubmit('edit', 'task');
+		},
+		vCancel :  function(){ 
+			navigateMainPaneBack();
+		},
+		vChanged :  function(){ 
+			handleValueChanged();
+		}
+	}
+});
 
 // temp task/agent node edit component
 var v_testform = new Vue({
@@ -1881,6 +1989,21 @@ var v_add_table = new Vue({
 	}
 });
 
+
+// "add task" dialog component
+var v_add_task = new Vue({
+	el: '#v_add_task',
+	data: { 
+	   v: _panesIndex['add']['task'].v
+	},
+	methods : {
+		vSubmit :  function(){ 
+			handleSubmit('add', 'task');
+		}
+	}
+});
+
+
 // "view/edit note" component
 var v_all_editor = new Vue({
 	el: '#v_all_editor',
@@ -1959,6 +2082,18 @@ var v_import_fileupload = new Vue({
         }, 
 		vSubmit :  function(){ 
 			handleSubmit('add', 'importupload');
+		}
+	}
+});
+
+var v_add_generator = new Vue({
+	el: '#v_add_generator',
+	data: { 
+	   v: _panesIndex['add']['generator'].v
+	},
+	methods : {
+		vSubmit :  function(){ 
+			handleSubmit('add', 'generator');
 		}
 	}
 });

@@ -67,7 +67,8 @@ class LocalStore:
             self.encryptedSecrets = {}
             self.derivePassword()
             self.save()
-            
+
+    # TODO: read env var partial secret
     def derivePassword(self):
         self.passwordStr = self.partialStr
         if os.name == 'nt':
