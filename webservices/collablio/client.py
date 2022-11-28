@@ -90,17 +90,7 @@ class Client:
         r.add_header('Content-type', multipartform.get_content_type())
         r.add_header('Content-length', len(data))
 
-        print()
-        print('OUTGOING DATA:')
-        for name, value in r.header_items():
-            print('{}: {}'.format(name, value))
-
-        #print(r.data.decode('utf-8'))
-
-        #respStr = urllib.request.urlopen(r).read().decode('utf-8')
         respStr = self.executeHttpRequest(r).read().decode('utf-8')
-        print('SERVER RESPONSE:')
-        print(respStr)
     
         
 class MultiPartForm:

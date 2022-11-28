@@ -45,8 +45,6 @@ async def do_import(fileToImport, metadata_json):
     else:
         nodeUIDToImportUnder = metadata_json['under_uid']
     
-    print('located node to import under: '+nodeUIDToImportUnder)
-
     sarifObj = await filereadutils.getJsonObjFromFileUpload(fileToImport)
     
     runs = []
@@ -67,7 +65,6 @@ async def do_import(fileToImport, metadata_json):
                 if 'defaultConfiguration' in rule and 'level' in rule['defaultConfiguration']:
                     rulesLookupSeverity[rule['id']] = rule['defaultConfiguration']['level']
                 
-                print('rules: '+str(rulesLookupTitle)+' '+str(rulesLookupSeverity))
 
         findingsNode = cnode.Node(cnode.TYPE_FINDINGS)
         timestamp = str(int(time.time()))
@@ -107,7 +104,6 @@ async def do_import(fileToImport, metadata_json):
                                 if 'startLine' in result['locations'][0]['physicalLocation']['region']:
                                     loc_line = result['locations'][0]['physicalLocation']['region']['startLine']
                         location = f'{loc_file}:{loc_line}'
-                print(f'result: {title},{severity},{location}')
                 
                 resultNode = cnode.Node(cnode.TYPE_JSON)
                 resultNode.Label = title

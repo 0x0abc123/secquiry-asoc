@@ -332,7 +332,7 @@
     <p class="level-item is-size-3 ptr" @click="vNavFwd()"><!--img v-bind:class="iconFwd"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+iconFwd"></use></svg></p>
 
     <p class="level-item"  @click="vSync()"><a class="button is-small">Sync</a></p>
-    <p class="level-item"><a @click="" class="button is-success is-small">Tasks</a></p>
+    <p class="level-item"><a @click="vNavUp()" class="button is-success is-small">Up</a></p>
   </div>
 
 </nav>
@@ -729,13 +729,13 @@
 <nav id="bottomnavbar" class="level box p-1">
 
   <!-- Left side -->
-  <div class="level-left ml-3">
+  <div id="v_bottom_bar" class="level-left ml-3">
     <div class="level-item mr-1">
-		Placeholder
+		
     </div>
     <div class="level-item">
       <p class="subtitle is-7 ptr" onClick="">
-        <strong>Test</strong>
+        <strong>{{v.node.uid}}</strong>
       </p>
     </div>
     <div class="level-item">

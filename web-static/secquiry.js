@@ -2125,6 +2125,20 @@ var vue_topnav = new Vue({
 		vNavFwd: function() {
 			navigateMainPaneForward();
 		},		
+		vNavUp: async function() {
+			let n = v_currently_selected_node.node;
+			console.log('vNavUp',n)
+			if(n[PROP_PARENTLIST] && n[PROP_PARENTLIST].length > 0) {
+				let id = n[PROP_PARENTLIST][0][PROP_UID];
+				console.log('vNavUp id ',id)
+
+				if( !(id in _index) )
+					await fetchNodes([id],PROP_LASTMOD,'gt',0,1);
+
+				if(historyPush(HISTORY_VIEWNODE,id))
+					v_action_funcs['view'](id);
+			}
+		},
 	}
 });
 
@@ -2146,6 +2160,14 @@ var vue_topsearch = new Vue({
 });
 
 
+var vue_bottom_bar = new Vue({
+	el: '#v_bottom_bar',
+	data: { 
+	   v: v_currently_selected_node,
+	},
+	methods: {		
+	}
+});
 ////////////////////////////////////////////////////
 //   resizable pane javascript
 ////////////////////////////////////////////////////

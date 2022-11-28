@@ -47,7 +47,7 @@ class Node:
         self.TextData = ''
 
     def populateFromDict(self, apiFormatNode):
-        print(f'populate: {str(apiFormatNode)}')
+
         self.Type = apiFormatNode[PROP_TYPE]
         #if PROP_CHILDLIST in apiFormatNode:
         #    self.Children = [n[PROP_UID] for n in apiFormatNode[PROP_CHILDLIST]]

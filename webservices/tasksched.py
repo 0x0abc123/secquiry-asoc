@@ -23,7 +23,6 @@ class AuthHandler:
         if not self.auth_token_hdr_val or self.lastAuthTime + mins90 < now:
             self.auth_token_hdr_val = cclient.LoginAndGetToken(self.user, self.passwd)
             self.lastAuthTime = now
-        print(self.auth_token_hdr_val)
         return self.auth_token_hdr_val
 
 # load plugins
@@ -45,7 +44,6 @@ lastFetchTime = 0
 
 def getLastFetchTime():
     global lastFetchTime
-    print(f'lastFetchTime: {lastFetchTime}')
     returnTime = lastFetchTime
     lastFetchTime = int(time.time())
     return returnTime
@@ -104,11 +102,6 @@ def scheduleNextTaskRun(istatus, taskmetadata):
     return
     
 
-def run_task(task_handler, task_node):
-    if task_handler.fetch_body_required():
-        pass
-    print(task_handler, task_node)
-
 def run():
     # todo: read config file and determine what secretstore to use (eg. local, AWS, hashicorpVault)
     sstore = secretstore.LocalStore()
@@ -119,13 +112,11 @@ def run():
     
     while True:
         time.sleep(10)
-        print('tasksched sleep 10')
         # manage creds (do we need to refresh auth token? or do we still have time before expiry?)
         auth_token_hdr_val = authHandler.getAuthToken()
         # query collablio for task nodes
         client = cclient.Client(f'Bearer {auth_token_hdr_val}')
         jsonResponse = client.fetchNodes(field = cnode.PROP_LASTMOD, op = 'gt', val = getLastFetchTime(), ntype = cnode.TYPE_TASK)
-        print(json.dumps(jsonResponse))
         
         if 'nodes' in jsonResponse:
             for nodeReturned in jsonResponse['nodes']:
@@ -157,7 +148,6 @@ def run():
             taskhandler = TaskHandlers[taskhandler_name]
 
             if taskhandler.fetch_body_required():
-                print('fetchbody required')
                 jsonRespWithTextbody = client.fetchNodes(uid = task_node[cnode.PROP_UID], field = cnode.PROP_LASTMOD, op = 'gt', val = 0, body = True)
                 task_node = jsonRespWithTextbody['nodes'][0]
                 params = json.loads(task_node[cnode.PROP_TEXTDATA])
@@ -198,7 +188,7 @@ common key/vals:
 
 _metadata.nextrun: <timestamp>   0 means it's marked as done, anything > 0 is a timestamp to start
 _metadata.every:  <int>,  0 means no repeat
-_metadata.timeunit:  minutes|hours|days|months|years
+_metadata.timeunit:  minutes|hours|days|weeks
 _metadata.until:  <timestamp>   only read if repeat is > 0, if empty, then repeat forever
 
 start_datetime = datetime.datetime.strptime('2022-11-28 10:30:00', '%Y-%m-%d %H:%M:%S')
