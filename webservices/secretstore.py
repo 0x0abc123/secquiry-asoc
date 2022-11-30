@@ -5,6 +5,7 @@ import traceback
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
 
 '''
 {"partialkey":"fh0uhsdhfago96uhaushfsbvxczbvzu", "salt":"hao34hawfhfhkl", "secrets":{"secret1":"f167rt9bgysgdy0vfqt", "secret2":"2f075tgbusd7fgt08t4"}}
@@ -22,6 +23,7 @@ def deriveKey(passwordString, saltB64String):
         length=32,
         salt=base64.urlsafe_b64decode(saltB64String),
         iterations=390000,
+        backend=default_backend()
     )
     derivedKey = base64.urlsafe_b64encode(kdf.derive(bytes(passwordString,'utf-8')))
     return derivedKey
