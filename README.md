@@ -3,7 +3,7 @@
 ## Installation of Secquiry and Collablio
 
 # Instructions for Debian 11
-
+```
   apt install git docker.io
   wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
   dpkg -i packages-microsoft-prod.deb
@@ -24,9 +24,10 @@
   ./build.sh
   cd dgraph
   ./setup.sh
+  ./adduser.sh
   cd ..
   dotnet run
-
+```
 # connect via ssh tunnel
   ssh -L 5000:127.0.0.1:5000 root@<ipOfServer>
 
