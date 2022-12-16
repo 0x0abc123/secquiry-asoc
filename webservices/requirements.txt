@@ -1,3 +1,4 @@
 fastapi[all]
 cryptography
 python-docx
+greenstalk

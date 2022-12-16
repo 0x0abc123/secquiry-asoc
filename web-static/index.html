@@ -294,7 +294,8 @@
     <div class="level-item mr-1">
 	<!--img id="id_logo" class="ico-logo" onClick=""--><!--svg id="id_logo" class="inln" width='2em' height='2em' viewBox='0 0 24 24'><use href="#ico-logo"></use></svg-->
 
-<svg id="ico-logo" class="inln" width='2em' height='2em' viewBox='0 0 24 24'>
+<img src="logo.svg" style="height:30px;width:auto; margin:4px;">
+<!--svg id="ico-logo" class="inln" width='2em' height='2em' viewBox='0 0 24 24'>
     <g viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
 <circle cx='12' cy='12' r='10'></circle><line x1='14.31' y1='8' x2='20.05' y2='17.94'></line><line x1='9.69' y1='8' x2='21.17' y2='8'></line><line x1='7.38' y1='12' x2='13.12' y2='2.06'></line><line x1='9.69' y1='16' x2='3.95' y2='6.06'></line><line x1='14.31' y1='16' x2='2.83' y2='16'></line><line x1='16.62' y1='12' x2='10.88' y2='21.94'></line>
    </g>
@@ -302,15 +303,15 @@
 
 <svg id="ico-load" class="inln"  width='2em' height='2em' viewBox='0 0 128 128' style="display: none;">
 <g><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#000"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(45 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(90 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(135 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#bebebe" transform="rotate(180 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#979797" transform="rotate(225 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#6e6e6e" transform="rotate(270 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#3c3c3c" transform="rotate(315 64 64)"/><animateTransform attributeName="transform" type="rotate" values="0 64 64;45 64 64;90 64 64;135 64 64;180 64 64;225 64 64;270 64 64;315 64 64" calcMode="discrete" dur="720ms" repeatCount="indefinite"></animateTransform></g><g><circle fill="#000" cx="63.66" cy="63.16" r="12"/><animate attributeName="opacity" dur="720ms" begin="0s" repeatCount="indefinite" keyTimes="0;0.5;1" values="1;0;1"/></g>
-</svg>
+</svg-->
 
 
     </div>
-    <div class="level-item">
+    <!--div class="level-item">
       <p class="subtitle is-3 ptr" onClick="">
         <strong>secquiry</strong>
       </p>
-    </div>
+    </div-->
     <div id="v_topsearch" class="level-item">
       <div class="field has-addons">
         <p class="control">
@@ -458,6 +459,10 @@
 					<p class="subtitle">Custom Data Field</p>
 					<div class="mono">{{v.config.nodeinfo.c}}</div>
 				  </div>
+				  <div class="box">
+					<p class="subtitle">Import (Diffscan)</p>
+					<span><a class="button is-primary" @click="clickImport($event,v.config.nodeinfo.uid)">Import Tool Output</a></span>
+				  </div>
 				  <div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
 					<p class="subtitle">List of Findings</p>
 					<div v-for="(child, index) in v.config.nodeinfo.outrefs" class="mb-1">
@@ -465,7 +470,30 @@
 					<!-- the same issue does not occur when cloning from the view or edit pane because the body has been loaded -->
 					<!-- maybe add a hasAttachmentBody field to the typeConfig?? -->
 
-					<div class="columns is-vcentered">
+						<div class="columns is-vcentered" v-if="child.ty == 'Json'">
+							<!--div class="column is-3"><span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span></div>
+							<div class="column is-4 ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</div>
+							<div class="column is-5 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div-->
+
+							<div class="column is-6"><span>
+							<span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span>
+							<span class="ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</span>
+							</span></div>
+							<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
+						</div>
+				    </div>
+
+				  </div>
+
+
+				  <div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
+					<p class="subtitle">List of Diffscans</p>
+					<div v-for="(child, index) in v.config.nodeinfo.outrefs" class="mb-1">
+					<!-- TODO: allow cloning of items but need to fetch attachment body if it hasnt been populated yet -->
+					<!-- the same issue does not occur when cloning from the view or edit pane because the body has been loaded -->
+					<!-- maybe add a hasAttachmentBody field to the typeConfig?? -->
+
+					<div class="columns is-vcentered" v-if="child.ty == 'Findings'">
 						<!--div class="column is-3"><span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span></div>
 						<div class="column is-4 ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</div>
 						<div class="column is-5 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div-->
@@ -476,15 +504,15 @@
 						</span></div>
 						<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
 					</div>
-
-					</div>
-					<div class="box" v-if="v.config.nodeinfo.out.length > 0 && v.config.nodeinfo.outrefs.length < 1">
-						<a class="button is-info" @click="loadChildren(v.config.nodeinfo.uid)">Show Child Items</a>
-					</div>
-					<div class="box" v-if="v.config.nodeinfo.out.length < 1">
-						<p>No Child Items</p>
 					</div>
 				  </div>
+
+				<div class="box" v-if="v.config.nodeinfo.out.length > 0 && v.config.nodeinfo.outrefs.length < 1">
+					<a class="button is-info" @click="loadChildren(v.config.nodeinfo.uid)">Show Child Items</a>
+				</div>
+				<div class="box" v-if="v.config.nodeinfo.out.length < 1">
+					<p>No Child Items</p>
+				</div>
 
 				</div>
 			</div>

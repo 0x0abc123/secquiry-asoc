@@ -5,6 +5,7 @@ import collablio.client as cclient
 import filereadutils
 import json
 import time
+import uuid
 
 '''
 curl -kv -X POST  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjoxNjY5MTcwNjU1LCJpc3MiOiJjb2xsYWJsaW8iLCJhdWQiOiJjb2xsYWJsaW8ifQ.iRFAX4LEB9rzTxNP-kEjwbe77SXnEQ5nzIELQNd7nG4' -F 'file=@lab-nmapsvsc.xml' -F 'metadata={"under_label":"2211-TESTCO-INT","xml":true}' https://10.3.3.83/webservice/import/nmap
@@ -29,13 +30,11 @@ async def do_import(fileToImport, metadata_json):
     
     client = cclient.Client(metadata_json['auth_token_hdr_val'])
     
-    # TODO: allow import under any node type, not just TYPE_PROJECT
     nodeUIDToImportUnder = ''
     nodeLabelToImportUnder = fileToImport.filename
     
     if 'under_label' in metadata_json:
         nodeLabelToImportUnder = metadata_json['under_label']
-        #jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = nodeLabelToImportUnder, depth = 20, ntype = cnode.TYPE_PROJECT)
         jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = nodeLabelToImportUnder, depth = 20)
 
         for nodeResult in jsonResponse['nodes']:
@@ -48,6 +47,15 @@ async def do_import(fileToImport, metadata_json):
     sarifObj = await filereadutils.getJsonObjFromFileUpload(fileToImport)
     
     runs = []
+
+    baselineFindings = {}
+    isDiffScan = 'diffscan' in metadata_json and metadata_json['diffscan']
+    if isDiffScan:
+        jsonResponse = client.fetchNodes(uid = nodeUIDToImportUnder, field = cnode.PROP_LASTMOD, op = 'gt', val = '0', depth = 1, ntype = cnode.TYPE_JSON)
+        for nodeResult in jsonResponse['nodes']:
+            bfKey = nodeResult[cnode.PROP_LABEL] + nodeResult[cnode.PROP_DETAIL] + nodeResult[cnode.PROP_CUSTOM]
+            baselineFindings[bfKey] = nodeResult
+
     
     for run in sarifObj['runs']:
         
@@ -57,7 +65,9 @@ async def do_import(fileToImport, metadata_json):
 
         toolName = run['tool']['driver']['name']
         
-        if 'rules' in run['tool']['driver']:
+        rulesPresent = 'rules' in run['tool']['driver']
+        
+        if rulesPresent:
             for rule in run['tool']['driver']['rules']:
                 rulesLookupTitle[rule['id']] = titleGenerators[toolName](rule) if toolName in titleGenerators else titleGenerators['default'](rule)
                     
@@ -111,19 +121,36 @@ async def do_import(fileToImport, metadata_json):
                 resultNode.CustomData = severity
                 resultNode.TextData = json.dumps(result)
                 
+                if isDiffScan:
+                    bfKey = resultNode.Label + resultNode.Detail + resultNode.CustomData
+                    if bfKey in baselineFindings:
+                        continue
                 findingsNode.Children.append(resultNode)
-        
+
         runNode = cnode.Node(cnode.TYPE_JSON)
         runNode.Label = 'Run Details'
         runNode.Detail = ''
         runNode.CustomData = 'none'
+        '''
+        we don't need to include results because the finding nodes already capture this data
+        we don't include rules, because they bloat the size of the json data with irrelevant info
+        we don't include toolExecutionNotification, because it can sometimes bloat the size of the json data with irrelevant info
+        '''
         del run['results']
+        if rulesPresent:
+            del run['tool']['driver']['rules']
+        if 'invocations' in run and 'toolExecutionNotifications' in run['invocations'][0]:
+            del run['invocations'][0]['toolExecutionNotifications']
         runNode.TextData = json.dumps(run)
         findingsNode.Children.append(runNode)
         
         findingsNode.ParentUids.append(nodeUIDToImportUnder)
+
+        if not isDiffScan:
+            findingsNode.CustomData = str(uuid.uuid4())
+
         runs.append(findingsNode)
-        
+
     client.upsertNodes(runs)    
 
     return {"status":"OK","detail":"Imported Successfully"}

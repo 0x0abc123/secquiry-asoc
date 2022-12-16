@@ -16,19 +16,27 @@ import mimetypes
 COLLABLIO_HOST = "http://127.0.0.1:5000"
 
 
-def LoginAndGetToken(username, password):
-    loginData = {'username':username,'password':password}
-    serialisedJson = json.dumps(loginData).encode('utf8')
-    req = urllib.request.Request(COLLABLIO_HOST+'/login', data=serialisedJson, headers={'content-type': 'application/json'})
-    response = urllib.request.urlopen(req)
-    # should return list of uids
-    responsedata = json.loads(response.read().decode('utf8'))
-    return responsedata['token']
 
 class Client:
 
-    def __init__(self, _auth_token_hdr_val):
+    def __init__(self, _auth_token_hdr_val = None, hostURL = None):
         self.auth_token_hdr_val = _auth_token_hdr_val
+        self.host_url = hostURL if hostURL is not None else COLLABLIO_HOST
+        self.user = ''
+        self.passwd = ''
+        self.lastAuthTime = datetime.datetime(1970,1,1)
+
+    def setCreds(self, username, password):
+        self.user = username
+        self.passwd = password
+    
+    def getAuthToken(self):
+        mins90 = datetime.timedelta(minutes=90)
+        now = datetime.datetime.now()
+        if not self.auth_token_hdr_val or self.lastAuthTime + mins90 < now:
+            self.auth_token_hdr_val = self.LoginAndGetToken(self.user, self.passwd)
+            self.lastAuthTime = now
+        return self.auth_token_hdr_val
 
     def executeHttpRequest(self, request):
         '''
@@ -39,11 +47,13 @@ class Client:
             #raise Exception()
             jsonResponse = {'token':''}
         '''
-        request.headers['Authorization'] = self.auth_token_hdr_val   #jsonResponse['token']
+        if self.user != '' and self.passwd != '':
+            self.getAuthToken()
+        request.headers['Authorization'] = f'Bearer {self.auth_token_hdr_val}'   #jsonResponse['token']
         return urllib.request.urlopen(request)
 
     def fetchNodesRequest(self, querystring):
-        req = urllib.request.Request(COLLABLIO_HOST+"/nodes"+querystring)
+        req = urllib.request.Request(self.host_url+"/nodes"+querystring)
         response = self.executeHttpRequest(req)
         jsonResponse =  json.loads(response.read().decode('utf8'))
         if 'nodes' not in jsonResponse:
@@ -59,7 +69,7 @@ class Client:
 
     def fetchNodesPost(self, uids = [], field = cnode.PROP_LASTMOD, op = 'gt', val = '0', depth = 20, typ = ''):
         reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }
-        req = urllib.request.Request(url=COLLABLIO_HOST+'/nodes', data=bytes(json.dumps(reqdata), encoding='utf-8'))
+        req = urllib.request.Request(url=self.host_url+'/nodes', data=bytes(json.dumps(reqdata), encoding='utf-8'))
         req.add_header('Content-Type', 'application/json')
         response = self.executeHttpRequest(req)
         jsonResponse =  json.loads(response.read().decode('utf8'))
@@ -73,7 +83,7 @@ class Client:
         for cNode in nodesToUpsert:
             cnode.recursiveConvertNodesToAPIFormat(cNode, apiNodesList)
         serialisedJson = json.dumps(apiNodesList).encode('utf8')
-        req = urllib.request.Request(COLLABLIO_HOST+'/upsert', data=serialisedJson, headers={'content-type': 'application/json'})
+        req = urllib.request.Request(self.host_url+'/upsert', data=serialisedJson, headers={'content-type': 'application/json'})
         #response = urllib.request.urlopen(req)
         response = self.executeHttpRequest(req)
         # should return list of uids
@@ -81,17 +91,26 @@ class Client:
         return new_uids
         
 
-    def createFileNode(self, multipartform):
+    def createFileNode(self, multipartform, api_path='/upload'):
         # Build the request, including the byte-string
         # for the data to be posted.
         data = bytes(multipartform)
-        r = urllib.request.Request(COLLABLIO_HOST+'/upload', data=data) #  'http://127.0.0.1:9123'
+        r = urllib.request.Request(self.host_url+api_path, data=data) #  'http://127.0.0.1:9123'
 
         r.add_header('Content-type', multipartform.get_content_type())
         r.add_header('Content-length', len(data))
 
         respStr = self.executeHttpRequest(r).read().decode('utf-8')
     
+
+    def LoginAndGetToken(self, username, password):
+        loginData = {'username':username,'password':password}
+        serialisedJson = json.dumps(loginData).encode('utf8')
+        req = urllib.request.Request(self.host_url+'/login', data=serialisedJson, headers={'content-type': 'application/json'})
+        response = urllib.request.urlopen(req)
+        # should return list of uids
+        responsedata = json.loads(response.read().decode('utf8'))
+        return responsedata['token']
         
 class MultiPartForm:
     """Accumulate the data to be used when posting a form."""

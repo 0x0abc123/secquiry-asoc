@@ -7,6 +7,7 @@ import importlib
 import json
 import multiprocessing
 import tasksched
+import notifier
 
 def auth_check(x_value: str = Header(default='x')):
     print('auth_check: '+x_value)
@@ -21,9 +22,12 @@ app = FastAPI()
 
 
 # launch tasksched
-t = multiprocessing.Process(target=tasksched.run)
-t.start()
+t_tasksched = multiprocessing.Process(target=tasksched.run)
+t_tasksched.start()
 
+# launch notifier
+t_notifier = multiprocessing.Process(target=notifier.run)
+t_notifier.start()
 
 # load plugins
 # importers
@@ -68,7 +72,7 @@ async def run_import(importer_name: str, file: UploadFile, request: Request, met
     auth_hdr = request.headers.get('Authorization')
     if not auth_hdr:
         raise HTTPException(status_code=400, detail="No Auth Bearer Token")
-    metadata_json['auth_token_hdr_val'] = auth_hdr
+    metadata_json['auth_token_hdr_val'] = auth_hdr.split(' ')[1]
     importer = Importers[importer_name]
     import_result = await importer.do_import(file, metadata_json)
     return {"importer_name": importer_name, "filename": file.filename, "metadata": metadata_json, "result": import_result}
@@ -88,7 +92,7 @@ async def run_generate(generator_name: str, request: Request):
     auth_hdr = request.headers.get('Authorization')
     if not auth_hdr:
         raise HTTPException(status_code=400, detail="No Auth Bearer Token")
-    metadata_dict['auth_token_hdr_val'] = auth_hdr
+    metadata_dict['auth_token_hdr_val'] = auth_hdr.split(' ')[1]
     generator = Generators[generator_name]
     generator_result = await generator.generate(metadata_dict)
     return {"result": generator_result}

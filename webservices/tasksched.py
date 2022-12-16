@@ -9,21 +9,6 @@ import collablio.node as cnode
 import collablio.client as cclient
 import secretstore
 
-# collablio auth
-class AuthHandler:
-    def __init__(self, username, password):
-        self.auth_token_hdr_val = None #_auth_token_hdr_val
-        self.user = username
-        self.passwd = password
-        self.lastAuthTime = datetime.datetime(1970,1,1)
-
-    def getAuthToken(self):
-        mins90 = datetime.timedelta(minutes=90)
-        now = datetime.datetime.now()
-        if not self.auth_token_hdr_val or self.lastAuthTime + mins90 < now:
-            self.auth_token_hdr_val = cclient.LoginAndGetToken(self.user, self.passwd)
-            self.lastAuthTime = now
-        return self.auth_token_hdr_val
 
 # load plugins
 # taskhandlers
@@ -104,8 +89,11 @@ def scheduleNextTaskRun(istatus, taskmetadata):
 
 def run():
     # todo: read config file and determine what secretstore to use (eg. local, AWS, hashicorpVault)
-    sstore = secretstore.LocalStore()
-    authHandler = AuthHandler(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
+    sstore = secretstore.GetStore()
+    #sstore.debug()
+    client = cclient.Client()
+    client.setCreds(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
+    #authHandler = cclient.AuthHandler(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
 
     # dict key is tasknode.uid, value is {schedtime: <timeobj>, node: tasknode}
     pendingTasks = {}
@@ -113,9 +101,9 @@ def run():
     while True:
         time.sleep(10)
         # manage creds (do we need to refresh auth token? or do we still have time before expiry?)
-        auth_token_hdr_val = authHandler.getAuthToken()
+        #auth_token_hdr_val = authHandler.getAuthToken()
         # query collablio for task nodes
-        client = cclient.Client(f'Bearer {auth_token_hdr_val}')
+        #client = cclient.Client(f'Bearer {auth_token_hdr_val}')
         jsonResponse = client.fetchNodes(field = cnode.PROP_LASTMOD, op = 'gt', val = getLastFetchTime(), ntype = cnode.TYPE_TASK)
         
         if 'nodes' in jsonResponse:

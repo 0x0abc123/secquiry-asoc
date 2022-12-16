@@ -296,8 +296,9 @@ createTypeConfigWithDefaults(TYPE_AGENT, [],'ico-send',false,'default','default'
 createTypeConfigWithDefaults(TYPE_SERVICE, [],'ico-send',false,'default','default','default');
 createTypeConfigWithDefaults(TYPE_JSON, [TYPE_ANNOTATION],'ico-miscfile',false,'json',null,null);
 createTypeConfigWithDefaults(TYPE_MARKDOWN, [TYPE_ANNOTATION],'ico-miscfile',false,'textbody',null,null);
-let c_findings = createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION],'ico-miscfile',false,'findings',null,null);
+let c_findings = createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION],'ico-miscfile',false,'findings','default','default');
 c_findings.showChildren = false;
+c_findings.diffscan = false;
 
 // About config.nodeinfo
 // we don't bind the collablio node data directly to a Vue component (eg. the node type's add, edit, view UIs)
@@ -588,7 +589,7 @@ var _panesIndex = {
 			divID: "import_fileupload",
 			v: { config:  getDefaultConfig('add')},
 			onBeforeShow: function(){clearImportUploadFormInput();},
-			onAfterSubmit: async function(){ await importupload(this.v.config.importer, this.v.config.under_uid);},
+			onAfterSubmit: async function(){ await importupload(this.v.config.importer, this.v.config.under_uid, this.v.config.diffscan);},
 			},
 		"generator" : {
 			divID: "add_generator",
@@ -850,6 +851,7 @@ function showLoading(waiting)
 {
 	let elem = document.getElementById("body_container");
 	elem.style.cursor = (waiting) ? "wait" : "auto";
+	/*
 	let logo = document.getElementById("ico-logo");
 	let load = document.getElementById("ico-load");
 	if(waiting)
@@ -862,6 +864,7 @@ function showLoading(waiting)
 		load.style.display = "none";
 		logo.style.display = "inline-block";
 	}
+	*/
 }
 
 // show hide the modal dialog pane:
@@ -893,6 +896,7 @@ function serialise(jsonObj) {
 			|| key == PROP_VUEREF
 			|| key == 'isOpen' 
 			|| key == 'hasChanged' 
+			|| key == 'showChildren' 
 			|| key == 'isViewed' 
 			|| key == 'dgraph.type') 
 			return undefined;
@@ -1033,7 +1037,7 @@ async function fileupload(node)
 
 // called from import file upload pane onAfterSubmit() hook
 // the node cannot be an empty node because the import needs to be created under a parent node
-async function importupload(importer,uid)
+async function importupload(importer,uid, diffscan=false)
 {
 	showLoading(true);
 	const input = document.getElementById('import_file');
@@ -1042,6 +1046,7 @@ async function importupload(importer,uid)
 	//if(node[PROP_UID])
 	params.under_uid = uid;
 	//params.under_uid = node[PROP_PARENTLIST][0].uid;
+	if (diffscan) params.diffscan = true;
 	
 	let data = new FormData();
 	data.append('file', input.files[0]);
@@ -1561,6 +1566,7 @@ var v_action_funcs = {
 	import: async function (_uid) { 		
 		_panesIndex.add['importupload'].v.config.under_uid = _uid;
 		//_panesIndex.add['importupload'].v.config.importer = 'example';
+		_panesIndex.add['importupload'].v.config.diffscan = (_index[_uid][PROP_TYPE] == TYPE_FINDINGS)
 		await _panesIndex.add['importupload'].onBeforeShow();
 		switchPane('add','importupload');
 	},
@@ -1807,6 +1813,10 @@ var v_view_findings = new Vue({
 		viewNode: function(e, id) {
 			if(historyPush(HISTORY_VIEWNODE,id))
 				v_action_funcs['view'](id);
+		},
+		clickImport: function(e, id) {
+			if(historyPush(HISTORY_VIEWNODE,id))
+				v_action_funcs['import'](id);
 		},
 		startDrag: function(evt,id) {
 			startDragging(evt, id, 'move');

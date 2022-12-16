@@ -4,7 +4,7 @@ import collablio.node as cnode
 import collablio.client as cclient
 import filereadutils
 import json
-
+import notifier
 
 def fetch_body_required():
     return True
@@ -20,4 +20,5 @@ def do_task(tasknode, params, client):
     # just return list of new nodes to be added as children under the task node, these steps will be done by tasksched:
     #runNode.ParentUids.append(tasknode[cnode.PROP_UID])
     #client.upsertNodes([runNode])    
+    notifier.queueNotification('example task completed')
     return {"nodes":[runNode], "status":"ok", "reason":""}
