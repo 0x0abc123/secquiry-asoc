@@ -45,7 +45,7 @@ def GetConfig():
     
 def GetStore():
     conf = GetConfig()
-    if conf['type'].lower() == 'aws':
+    if conf['type'].lower() == 'aws' and AWS_SUPPORTED:
         return AWSStore(conf['location'])
     else:
         return LocalStore(conf['location'])
