@@ -5,6 +5,7 @@ import importlib
 import json
 import secretstore
 import greenstalk
+import logger
 
 GREENSTALK_HOST = '127.0.0.1'
 GREENSTALK_PORT = 11300
@@ -20,14 +21,10 @@ for m in notifiers.__all__:
     else:
         MailNotifiers.append(notifier_module)
 
-    print(f'loaded module: {m}')
+    logger.logEvent(f'notifier loaded module: {m}')
   except Exception as e:
-    print(str(e))
-
-print('InstantNotifiers loaded:')
-print(InstantNotifiers)
-print('MailNotifiers loaded:')
-print(MailNotifiers)
+    logger.logEvent(f'notifier error loading module {m}: {e}')
+            
 
 def queueNotification(ndata, ntype = 'instant'):
     with greenstalk.Client((GREENSTALK_HOST, GREENSTALK_PORT)) as client:
@@ -65,4 +62,4 @@ def run():
 
                 client.delete(job)
             except Exception as e:
-                print(str(e))
+                logger.logEvent(f'notifier runtime error: {e}, payload: {payload}')

@@ -8,7 +8,7 @@ import datetime
 import collablio.node as cnode
 import collablio.client as cclient
 import secretstore
-
+import logger
 
 # load plugins
 # taskhandlers
@@ -18,9 +18,9 @@ for m in taskhandlers.__all__:
   try:
     taskhandler_module = importlib.import_module('taskhandlers.'+m)
     TaskHandlers[m] = taskhandler_module
-    print(f'loaded module: {m}')
+    logger.logEvent(f'loaded module: {m}')
   except Exception as e:
-    print(str(e))
+    logger.logEvent(str(e))
 
 print(TaskHandlers)
 
@@ -50,7 +50,7 @@ def isTaskScheduledToRunNow(taskmetadata):
     try:
         return textToTime(next_run_timestamp) < datetime.datetime.now()
     except Exception as e:
-        print(f'failed to parse time {next_run_timestamp}')
+        logger.logEvent(f'failed to parse time {next_run_timestamp}')
         return False
 
 def scheduleNextTaskRun(istatus, taskmetadata):
@@ -95,8 +95,13 @@ def run():
     client.setCreds(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
     #authHandler = cclient.AuthHandler(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
 
+    for th in TaskHandlers:
+        TaskHandlers[th].initialise(sstore)
+        
     # dict key is tasknode.uid, value is {schedtime: <timeobj>, node: tasknode}
     pendingTasks = {}
+    
+    unknownHandlers = set()
     
     while True:
         time.sleep(10)
@@ -127,7 +132,9 @@ def run():
             taskhandler_name = task_metadata['handler']
 
             if taskhandler_name not in TaskHandlers:
-                print(f'taskhandler {taskhandler_name} unknown')
+                if taskhandler_name not in unknownHandlers:
+                    logger.logEvent(f'taskhandler {taskhandler_name} unknown')
+                    unknownHandlers.add(taskhandler_name)
                 continue
 
             if not isTaskScheduledToRunNow(task_metadata):

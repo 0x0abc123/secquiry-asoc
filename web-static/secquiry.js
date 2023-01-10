@@ -261,14 +261,16 @@ const TYPE_SERVICE = "Service";
 const TYPE_JSON = "Json";
 const TYPE_MARKDOWN = "Markdown";
 const TYPE_FINDINGS = "Findings";
+const TYPE_CREDENTIALS = "Credentials";
 
 createTypeConfigWithDefaults(TYPE_CLIENT, [TYPE_FOLDER, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_ANNOTATION, TYPE_FILE],'ico-user');
 
 let c_project = createTypeConfigWithDefaults(TYPE_PROJECT, [TYPE_FOLDER, TYPE_REPORT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_IMAGE, TYPE_ANNOTATION, TYPE_FILE],'ico-book',false);
 c_project.actionViewConf.config.showImportButton = true;
 
-let c_folder = createTypeConfigWithDefaults(TYPE_FOLDER, [TYPE_FOLDER, TYPE_CLIENT, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_ANNOTATION, TYPE_FILE, TYPE_IMAGE, TYPE_TAG, TYPE_HOST, TYPE_PORT, TYPE_REPORT, TYPE_SECTION, TYPE_CODE, TYPE_TASK, TYPE_AGENT, TYPE_SERVICE, TYPE_JSON, TYPE_MARKDOWN, TYPE_FINDINGS ],'ico-folder');
+let c_folder = createTypeConfigWithDefaults(TYPE_FOLDER, [TYPE_FOLDER, TYPE_CLIENT, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_ANNOTATION, TYPE_FILE, TYPE_IMAGE, TYPE_TAG, TYPE_HOST, TYPE_PORT, TYPE_REPORT, TYPE_SECTION, TYPE_CODE, TYPE_TASK, TYPE_AGENT, TYPE_SERVICE, TYPE_JSON, TYPE_MARKDOWN, TYPE_FINDINGS, TYPE_CREDENTIALS],'ico-folder');
 c_folder.actionViewConf.config.showImportButton = true;
+c_folder.actionViewConf.config.generators = [{'id':'credentials','btnLabel':'Add Credentials'}];
 
 let c_host = createTypeConfigWithDefaults(TYPE_HOST, [TYPE_FOLDER, TYPE_PORT, TYPE_IMAGE, TYPE_TEXT, TYPE_NOTE, TYPE_TABLE, TYPE_ANNOTATION, TYPE_FILE],'ico-host',false);
 c_host.getValueForSorting = (node) => {	return convertIPtoNum(node[PROP_LABEL]); }
@@ -299,6 +301,7 @@ createTypeConfigWithDefaults(TYPE_MARKDOWN, [TYPE_ANNOTATION],'ico-miscfile',fal
 let c_findings = createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION],'ico-miscfile',false,'findings','default','default');
 c_findings.showChildren = false;
 c_findings.diffscan = false;
+createTypeConfigWithDefaults(TYPE_CREDENTIALS, [TYPE_ANNOTATION],'ico-key',false,'default',null,'default');
 
 // About config.nodeinfo
 // we don't bind the collablio node data directly to a Vue component (eg. the node type's add, edit, view UIs)
@@ -1350,7 +1353,8 @@ function updateNodeTree(serverResponse)
 			incomingNode.hasChanged = true;
 			incomingNode.isViewed = false;
 			incomingNode.isOpen = false;
-			incomingNode.showChildren = _typeConfigs[incomingNode[PROP_TYPE]].showChildren; 
+			let tc = _typeConfigs[incomingNode[PROP_TYPE]] || _typeConfigs['unknown']
+			incomingNode.showChildren = tc.showChildren; 
 			_index[incomingNode.uid] = incomingNode;
 		}
 	}
@@ -1633,7 +1637,7 @@ var v_action_funcs = {
 		let targetTC = _typeConfigs[nTarget[PROP_TYPE]];
 		if(!targetTC.typesAllowedForChildNodes.has(nSrc[PROP_TYPE]))
 		{
-			notification(`${nSrc.ty}s are not allowed to be added to ${nTarget.ty}s`);
+			notification(`${nSrc.ty} nodes are not allowed to be children of ${nTarget.ty} nodes`);
 			return;
 		}
 

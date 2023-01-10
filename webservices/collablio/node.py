@@ -33,6 +33,7 @@ TYPE_FINDINGS = "Findings"
 TYPE_JSON = "Json"
 TYPE_MARKDOWN = "Markdown"
 TYPE_TASK = "Task"
+TYPE_CREDENTIALS = "Credentials"
 
 class Node:
     

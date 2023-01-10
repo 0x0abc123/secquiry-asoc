@@ -3,7 +3,7 @@
 import collablio.node as cnode
 import collablio.client as cclient
 import filereadutils
-import json
+import logger
 
 import json
 import docx
@@ -412,8 +412,8 @@ def generateReportForReportNode(reportRootNodeUID, client):
         return reportSaveName
             
     except Exception as e:
-        print('an exception occurred while generating the report: '+str(e))
-        traceback.print_exc()
+        logger.logEvent('an exception occurred while generating the report: '+str(e))
+        logger.logEvent(traceback.format_exc())
         return ''
 
 
@@ -423,7 +423,7 @@ async def generate(metadata_dict):
     reportfile = generateReportForReportNode(metadata_dict['under_uid'], client)
     # upload report as file attachment node
 
-    print(f'reportfile: {reportfile}')
+    logger.logEvent(f'reportfile: {reportfile}')
 
 
     params = { 'parentid': metadata_dict['under_uid'] }

@@ -6,6 +6,9 @@ import filereadutils
 import json
 import notifier
 
+def initialise(secretstore):
+    return
+
 def fetch_body_required():
     return True
 

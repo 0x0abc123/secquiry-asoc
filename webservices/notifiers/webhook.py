@@ -27,7 +27,7 @@ def init(secretsRequired = {}):
                 store = json.load(cf)
             WEBHOOK_URL = store['url']
         except Exception as e:
-            print(e)
+            logger.logEvent(f'webhook error loading config: {e}')
             traceback.print_exc()
     
 

@@ -21,6 +21,7 @@ import json
 import collablio.node as cnode
 import collablio.client as cclient
 import secretstore
+import logger
 
 # assuming that aws creds are configured for the user|instance, run:
 # usage:   python3 -m standalone.ingester_aws http://<collablio_host>:<port>  <s3_bucket_name>
@@ -47,7 +48,7 @@ if __name__ == '__main__':
         if m is not None:
             app_id = m.group(1)
             timestamp = m.group(2)
-            print(f'app_id: {app_id}, timestamp: {timestamp}')
+            logger.logEvent(f'ingester_aws processing upload for {app_id}')
             # query collablio for task nodes
             if app_id not in ignoreIDs:
                 if app_id not in findingsNodes:
@@ -75,5 +76,4 @@ if __name__ == '__main__':
                 os.remove(tmp_file_download_path)
             else:
                 print(f'skip {app_id}')
-    print(findingsNodes)
-    print(ignoreIDs)
+                logger.logEvent(f'ingester_aws skip {app_id}')

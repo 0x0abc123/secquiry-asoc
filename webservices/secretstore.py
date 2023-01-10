@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import traceback
+import logger
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -37,8 +38,8 @@ def GetConfig():
                 SSConfig = json.load(cf)
             loadedConfigOK = SSConfig['type'] != '' and SSConfig['location'] != ''
         except Exception as e:
-            print(e)
-            traceback.print_exc()
+            logger.logEvent(e)
+            logger.logEvent(traceback.format_exc())
     if not loadedConfigOK:
         SSConfig = {'type':'local','location':None}
     return SSConfig
@@ -141,8 +142,7 @@ class LocalStore:
                 self.decryptSecrets()
                 loadedStoreOK = True
             except Exception as e:
-                print(e)
-                traceback.print_exc()
+                logger.logEvent(traceback.format_exc())
         if not loadedStoreOK:
             # need to create and initialise store
             self.saltB64Str = base64.urlsafe_b64encode(os.urandom(16)).decode('utf-8')

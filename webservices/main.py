@@ -8,6 +8,7 @@ import json
 import multiprocessing
 import tasksched
 import notifier
+import logger
 
 def auth_check(x_value: str = Header(default='x')):
     print('auth_check: '+x_value)
@@ -37,11 +38,11 @@ for m in importers.__all__:
   try:
     importer_module = importlib.import_module('importers.'+m)
     Importers[m] = importer_module
-    print(f'module: {m}')
+    logger.logEvent(f'module: {m}')
   except Exception as e:
-    print(str(e))
+    logger.logEvent(str(e))
 
-print(Importers)
+logger.logEvent(Importers)
 
 # generators
 Generators = {}
@@ -50,9 +51,9 @@ for m in generators.__all__:
   try:
     generator_module = importlib.import_module('generators.'+m)
     Generators[m] = generator_module
-    print(f'module: {m}')
+    logger.logEvent(f'module: {m}')
   except Exception as e:
-    print(str(e))
+    logger.logEvent(str(e))
 
 print(Generators)
 
