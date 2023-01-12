@@ -33,16 +33,20 @@ if __name__ == '__main__':
     #sstore.debug()
     client = cclient.Client(hostURL = collablio_host_url)
     client.setCreds(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
+
+    logger.logEvent(f'ingester_aws running as {sstore.get("secquiry_user")} url: {collablio_host_url}, bucket: {s3_bucket_name}')
+
     findingsNodes = {}
     ignoreIDs = set()
     
-    OBJKEY_PARTS_REGEX = '([a-f0-9-]+)-([0-9]{10})\.out'
+    OBJKEY_PARTS_REGEX = '([a-f0-9-]+)-([0-9]{10})\.[a-zA-Z0-9_\-]'
 
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(s3_bucket_name)
     object_summary_iterator = bucket.objects.all()
     for obj in object_summary_iterator:
         objkey = str(obj.key)
+        logger.logEvent(f'ingester_aws processing {objkey}')
         app_id = None
         m = re.search(OBJKEY_PARTS_REGEX, objkey)
         if m is not None:
@@ -52,7 +56,7 @@ if __name__ == '__main__':
             # query collablio for task nodes
             if app_id not in ignoreIDs:
                 if app_id not in findingsNodes:
-                    jsonResponse = client.fetchNodes(field = cnode.PROP_CUSTOM, op = 'allofterms', val = app_id, ntype = cnode.TYPE_FINDINGS)
+                    jsonResponse = client.fetchNodes(field = cnode.PROP_CUSTOM, op = 'allofterms', val = app_id)
                     if 'nodes' in jsonResponse and len(jsonResponse['nodes']) > 0:
                         for nodeReturned in jsonResponse['nodes']:
                             findingsNodes[app_id] = nodeReturned[cnode.PROP_UID]
@@ -71,7 +75,13 @@ if __name__ == '__main__':
                    form_data = cclient.MultiPartForm()
                    form_data.add_field('metadata',json.dumps({"diffscan":True,"under_uid":import_under_uid}))
                    form_data.add_file('file', objkey, tmpf)
-                   client.createFileNode(form_data, '/webservice/import/sarif210')
+                   importer_url = '/webservice/import/'
+                   fileext = objkey.split('.')[-1]
+                   if fileext == 'dsjson':
+                     importer_url += 'dsjson'
+                   else:
+                     importer_url += 'sarif210'
+                   client.createFileNode(form_data, importer_url)
                    s3client.delete_object(Bucket=s3_bucket_name, Key=objkey)
                 os.remove(tmp_file_download_path)
             else:

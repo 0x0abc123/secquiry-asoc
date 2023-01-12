@@ -58,7 +58,7 @@ class Node:
         self.Label = apiFormatNode[PROP_LABEL]
         self.Detail = apiFormatNode[PROP_DETAIL]
         self.CustomData = apiFormatNode[PROP_CUSTOM]
-        self.TextData = apiFormatNode[PROP_TEXTDATA]
+        self.TextData = apiFormatNode[PROP_TEXTDATA] if PROP_TEXTDATA in apiFormatNode else ''
     
     def convert(self):
         apiFormatNode = {}

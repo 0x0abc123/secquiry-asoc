@@ -22,7 +22,7 @@ for m in taskhandlers.__all__:
   except Exception as e:
     logger.logEvent(str(e))
 
-print(TaskHandlers)
+logger.logEvent(TaskHandlers)
 
 
 lastFetchTime = 0
