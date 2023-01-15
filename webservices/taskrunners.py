@@ -3,12 +3,34 @@ import json
 import notifier
 import traceback
 import logger
+import urllib.request
 
 AWS_SUPPORTED = True
 try:
     import boto3
 except ImportError:
     AWS_SUPPORTED = False
+
+class WebhookRunner:
+    def __init__(self):
+        return
+
+    def run(self, runparams):
+        try:
+            taskdef = runparams['taskdef']
+
+            if 'cpu' not in runparams:
+                runparams['cpu'] = "512"
+            if 'mem' not in runparams:
+                runparams['mem'] = "1024"
+
+            if runparams['method'].lower() == 'post':
+                req = urllib.request.Request(runparams['url'], data=json.dumps(runparams).encode('utf8'), headers={'content-type': 'application/json'})
+                response = urllib.request.urlopen(req)
+
+        except Exception as e:
+            logger.logEvent(e)
+            logger.logEvent(traceback.format_exc())
 
 class AWSFargateRunner:
     def __init__(self):
@@ -19,8 +41,6 @@ class AWSFargateRunner:
     # cluster, vpcsubnet, secgrp, publicIP, taskdef, image, taskname, envvars [], cpu, mem
     def run(self, runparams):
         try:
-            print('fargate runner')
-            print(runparams)
             taskdef = runparams['taskdef']
             vpc_subnet = runparams['vpc_subnet'] #conf['fargate']['vpc_subnet_id']
             sec_grp = runparams['sec_grp'] #conf['fargate']['security_group_id']
@@ -75,7 +95,7 @@ class AWSFargateRunner:
                 logger.logEvent(f'no task definition found: {taskdef}')
 
         except Exception as e:
-            print(e)
+            logger.logEvent(e)
             logger.logEvent(traceback.format_exc())
 
 
@@ -93,7 +113,7 @@ class AWSFargateRunner:
             else:
                 return True
         except Exception as e:
-            print(e)
+            logger.logEvent(e)
             logger.logEvent(traceback.format_exc())
             return False
 
@@ -133,7 +153,7 @@ class AWSFargateRunner:
                 }
             )
         except Exception as e:
-            print(e)
+            logger.logEvent(e)
             logger.logEvent(traceback.format_exc())
 
             '''

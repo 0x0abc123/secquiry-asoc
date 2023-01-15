@@ -51,8 +51,15 @@ def getParamsFargate(conf, instance=None):
     params['cluster_name'] = conf['fargate'][instance]['cluster'] if instance else conf['fargate']['cluster']
     return params
 
+def getParamsWebhook(conf, instance=None):
+    params = {}
+    params['url'] = conf['webhook'][instance]['url'] if instance else conf['webhook']['url']
+    params['method'] = conf['webhook'][instance]['method'] if instance else conf['webhook']['method']
+    return params
+
 paramsLoaders = {
     "fargate" : getParamsFargate,
+    "webhook" : getParamsWebhook,
 }
 
 def initialise(secretstore):
@@ -65,7 +72,7 @@ def do_task(tasknode, params, client):
     tool = params['tool']
     var_dict = params['vars']
     # we need the asocscan container tag to use too
-    upload_uri = params['upload_uri']
+    #upload_uri = params['upload_uri']
     platform = params['platform']
     cred_id = params['cred_id'] if 'cred_id' in params else None # encsecret node label or UID
 
@@ -91,9 +98,12 @@ def do_task(tasknode, params, client):
     runparams['taskdef'] = tool
 
     runner = runners[platform]
-    #runner.run(runparams)
-    print(runparams)
+    runner.run(runparams)
+    #print(runparams)
     return {"nodes":[], "status":"ok", "reason":""}
 
 
-runners = {'fargate':taskrunners.AWSFargateRunner()}
+runners = {
+    'fargate': taskrunners.AWSFargateRunner(),
+    'webhook': taskrunners.WebhookRunner(),
+}
