@@ -141,10 +141,6 @@ async def do_import(fileToImport, metadata_json):
         
         if not existingHostUID:
             hostNode.ParentUids.append(nodeUIDToImportUnder)
-
-        if not isDiffScan:
-            hostNode.CustomData = str(uuid.uuid4())
-
         
 
     client.upsertNodes(nodesToUpsert)    

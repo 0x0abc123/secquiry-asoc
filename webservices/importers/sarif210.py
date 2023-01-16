@@ -12,6 +12,9 @@ curl -kv -X POST  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 '''
 async def do_import(fileToImport, metadata_json):
 
+    def titleGeneratorGitleaks(rule_obj):
+        return rule_obj['id']
+
     def titleGeneratorSemgrep(rule_obj):
         return rule_obj['id'].split('.')[-1]
 
@@ -24,6 +27,7 @@ async def do_import(fileToImport, metadata_json):
         return title
         
     titleGenerators = {
+        'gitleaks':titleGeneratorGitleaks,
         'semgrep':titleGeneratorSemgrep,
         'default':titleGeneratorDefault,
     }
