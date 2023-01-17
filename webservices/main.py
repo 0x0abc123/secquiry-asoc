@@ -9,6 +9,8 @@ import multiprocessing
 import tasksched
 import notifier
 import logger
+import appconfig
+import authhelpers
 
 def auth_check(x_value: str = Header(default='x')):
     print('auth_check: '+x_value)
@@ -98,6 +100,24 @@ async def run_generate(generator_name: str, request: Request):
     generator_result = await generator.generate(metadata_dict)
     return {"result": generator_result}
 
+
+@app.get("/ssoconfig")
+async def get_ssoconfig():
+    return {"sso": appconfig.getValue('sso')}
+
+@app.post("/login/sso/{sso_type}")
+async def post_loginsso(sso_type: str, request: Request):
+    auth_token = None
+    if sso_type == 'oidc_aws':
+        auth_token = authhelpers.login_oidc_aws(request)
+    return {"token": auth_token}
+
+@app.get("/debug_req_headers")
+async def do_debug(request: Request):
+    if not appconfig.getValue('debug'):
+        return {}
+    return {"requestdata":request.headers}
+    
 '''
 await request.json()
 

@@ -9,13 +9,11 @@ import urllib.parse
 import json
 import traceback
 import collablio.node as cnode
+import appconfig
 import io
 import mimetypes
 
-# todo: load from config file
-COLLABLIO_HOST = "http://127.0.0.1:5000"
-
-
+COLLABLIO_HOST = appconfig.getValue('collablio_url') #"http://127.0.0.1:5000"
 
 class Client:
 

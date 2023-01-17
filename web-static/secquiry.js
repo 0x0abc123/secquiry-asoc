@@ -298,7 +298,7 @@ createTypeConfigWithDefaults(TYPE_AGENT, [],'ico-send',false,'default','default'
 createTypeConfigWithDefaults(TYPE_SERVICE, [],'ico-send',false,'default','default','default');
 createTypeConfigWithDefaults(TYPE_JSON, [TYPE_ANNOTATION],'ico-miscfile',false,'json',null,null);
 createTypeConfigWithDefaults(TYPE_MARKDOWN, [TYPE_ANNOTATION],'ico-miscfile',false,'textbody',null,null);
-let c_findings = createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION],'ico-miscfile',false,'findings','default','default');
+let c_findings = createTypeConfigWithDefaults(TYPE_FINDINGS, [TYPE_ANNOTATION, TYPE_JSON],'ico-miscfile',false,'findings','default','default');
 c_findings.showChildren = false;
 c_findings.diffscan = false;
 createTypeConfigWithDefaults(TYPE_CREDENTIALS, [TYPE_ANNOTATION],'ico-key',false,'default',null,'default');
@@ -407,8 +407,8 @@ var _panesIndex = {
 				//need to fetch attachment body and populate viewer
 				let nodeInfo = this.v.config.nodeinfo;
 				await updateAttachmentNodeIfChangedOrEmpty(nodeInfo);
-				//console.log('json.onBeforeShow:',nodeInfo[PROP_TEXTDATA]);
-				setJSON(JSON.parse(nodeInfo[PROP_TEXTDATA]));
+				let textData = nodeInfo[PROP_TEXTDATA] || '{}';
+				setJSON(JSON.parse(textData));
 			},
 		},
 		"table" : {
@@ -788,58 +788,78 @@ function switchPane(paneType, paneName)
 
 // login/auth ------------------------------------------------------------
 
+const loginURLs = {"oidc_aws":"/webservice/login/sso/oidc_aws","default":"login"}
+var sso_login = '';
+async function loadSSOLoginType() {
+        await fetch('/webservice/ssoconfig')
+        .then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
+        .then(rdata => {
+                if(rdata && rdata['sso'] && rdata['sso'].length > 0)
+                {
+                        sso_login = rdata['sso'];
+                }
+        })
+        .catch(err => console.log(err) );
+}
+
 const BEARERTOKEN = 'bearerToken';
 function getBearerToken() {
-	return localStorage.getItem(BEARERTOKEN);
+        return localStorage.getItem(BEARERTOKEN);
 }
 
 function getBearerTokenHeader() {
-	return 'Bearer '+localStorage.getItem(BEARERTOKEN);
+        return 'Bearer '+localStorage.getItem(BEARERTOKEN);
 }
 
 function setBearerToken(token) {
-	localStorage.setItem(BEARERTOKEN,token);
+        localStorage.setItem(BEARERTOKEN,token);
 }
 
 function showLoginModal(showIt)
 {
-	var loginDivClassList = document.getElementById("modal_div_login").classList;
-	if(!showIt && loginDivClassList.contains('is-active'))
-		loginDivClassList.remove('is-active');
-	else if(showIt) {
-		setBearerToken('');
-		loginDivClassList.add('is-active');
-	}
+        if (sso_login.length > 0) {
+                if(showIt)
+                    doLogin(null).then(() => {}).catch(err => console.log(err));
+                return;
+        }
+        var loginDivClassList = document.getElementById("modal_div_login").classList;
+        if(!showIt && loginDivClassList.contains('is-active'))
+                loginDivClassList.remove('is-active');
+        else if(showIt) {
+                setBearerToken('');
+                loginDivClassList.add('is-active');
+        }
 }
 
 async function doLogin(creds) {
+        let logintype = (creds == null && sso_login.length > 0) ? sso_login : 'default';
+        let loginURL = loginURLs[logintype];
+        await fetch(loginURL,{
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(creds)
+        })
+        .then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
+        .then(rdata => {
+                if(rdata && rdata['token'] && rdata['token'].length > 0)
+                {
+                        setBearerToken(rdata['token']);
+                }
+                else
+                {
+                        throw new Error('500');
+                }
+        })
+        .catch(err => {console.log(err);setBearerToken('');});
 
-	await fetch('login',{
-		method: 'POST',
-		headers: {
-		  'Content-Type': 'application/json'
-		},
-		body: JSON.stringify(creds)
-	})
-	.then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
-	.then(rdata => { 
-		if(rdata && rdata['token'] && rdata['token'].length > 0)
-		{
-			setBearerToken(rdata['token']);
-		}
-		else
-		{
-			throw new Error('500');
-		}
-	})
-	.catch(err => {console.log(err);setBearerToken('');});
-
-	if (getBearerToken()) {
-		showLoginModal(false);
-		if (_lastUpdateTime_Server < 1)
-			fetchInitialNodes();
-	}
-	return (getBearerToken() != '');
+        if (getBearerToken()) {
+                showLoginModal(false);
+                if (_lastUpdateTime_Server < 1)
+                        fetchInitialNodes();
+        }
+        return (getBearerToken() != '');
 }
 
 // event handlers ------------------------------------------------------------
@@ -2245,11 +2265,12 @@ function OnDrag(event) {
 //   main execution loop, initialise and refresh every 60secs
 //////////////////////////////////////////////////////////////////
 
-if (getBearerToken() == '')
-	showLoginModal(true);
-else
-	fetchInitialNodes();
-
+loadSSOLoginType().then( () => {
+	if (getBearerToken() == '')
+		showLoginModal(true);
+	else
+		fetchInitialNodes();
+}).catch(err => console.log(err));
 
 const SLEEPINTERVAL = 60000; //millisec
 var sleepTime = SLEEPINTERVAL;

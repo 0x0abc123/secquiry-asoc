@@ -3,11 +3,16 @@
 import urllib.request
 import urllib.parse
 import filereadutils
+import appconfig
 import json
 import os
 
 CONFIG_FILE = os.path.dirname(os.path.realpath(__file__)) + '/webhook.conf.json'
 WEBHOOK_URL = ''
+
+PROXY_URL = appconfig.getValue("proxy")
+if PROXY_URL:
+    PROXY_URL = PROXY_URL.replace('http://','')
 
 # "instant", "mail"
 def notifier_type():
@@ -34,5 +39,8 @@ def init(secretsRequired = {}):
 def send_notification(message_body, content_type = 'text/plain'):
     if not WEBHOOK_URL:
         return
+        
     req = urllib.request.Request(WEBHOOK_URL, data=message_body.encode('utf8'), headers={'content-type': content_type})
+    if PROXY_URL:
+        req.set_proxy(PROXY_URL,'http')
     response = urllib.request.urlopen(req)
