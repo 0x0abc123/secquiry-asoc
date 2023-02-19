@@ -9,6 +9,7 @@ import collablio.node as cnode
 import collablio.client as cclient
 import secretstore
 import logger
+import traceback
 
 # load plugins
 # taskhandlers
@@ -20,8 +21,9 @@ for m in taskhandlers.__all__:
     TaskHandlers[m] = taskhandler_module
     logger.logEvent(f'loaded module: {m}')
   except Exception as e:
-    logger.logEvent(str(e))
-
+    logger.logEvent(f'failed loading module {m}: {e}')
+    logger.logEvent(traceback.format_exc())
+    
 logger.logEvent(TaskHandlers)
 
 
@@ -104,6 +106,7 @@ def run():
     unknownHandlers = set()
     
     while True:
+      try:
         time.sleep(10)
         # manage creds (do we need to refresh auth token? or do we still have time before expiry?)
         #auth_token_hdr_val = authHandler.getAuthToken()
@@ -153,12 +156,20 @@ def run():
             # OK -> successful
             # failed -> task failed but keep rescheduling
             # suspend -> task failed, stop further scheduling
-            taskResultData = taskhandler.do_task(task_node, params, client)
-            resultNodes = taskResultData['nodes']
-            for n in resultNodes:
-                if len(n.ParentUids) < 1:
-                    n.ParentUids.append(task_node[cnode.PROP_UID])
-            
+            taskResultData = {"nodes":[], "status":"suspend", "reason":""}
+            resultNodes = []
+            try:
+                taskResultData = taskhandler.do_task(task_node, params, client)
+                logger.logEvent(f'ran task {task_node[cnode.PROP_UID]} {task_node[cnode.PROP_LABEL]}, result data: {taskResultData}')
+                resultNodes = taskResultData['nodes']
+                for n in resultNodes:
+                    if len(n.ParentUids) < 1:
+                        n.ParentUids.append(task_node[cnode.PROP_UID])
+            except Exception as e:
+                taskResultData = {"nodes":[], "status":"suspend", "reason":str(e)}
+                logger.logEvent(f'tasksched task failed: {task_node[cnode.PROP_UID]} {task_node[cnode.PROP_LABEL]} - {str(e)}')
+                logger.logEvent(traceback.format_exc())
+
             #update next run times
             scheduleNextTaskRun(taskResultData['status'], task_metadata)
             
@@ -168,7 +179,8 @@ def run():
             resultNodes.append(cTaskNode)
             
             client.upsertNodes(resultNodes)    
-
+      except Exception as e:
+        logger.logEvent(traceback.format_exc())
 '''
 task nodes:
 
