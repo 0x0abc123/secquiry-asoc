@@ -3,4 +3,4 @@
 __pycache__
 secretstore.json
 *.conf.json
-#gitpush.sh
+gitpush.sh
