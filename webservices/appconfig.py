@@ -4,7 +4,7 @@ import traceback
 import logger
 
 '''
-{"collablio_url":"http://127.0.0.1:5000","sso":"oidc_aws", "proxy":"http://172.16.25.161:8000"}
+{"collablio_url":"http://127.0.0.1:5000","sso":"oidc_aws","oidc_iss":"https://login.microsoftonline.com/5f135576-8928-f43c-4cab-dfcdddf844b4/v2.0","sso_pubkey_url":"https://public-keys.auth.elb.ap-southeast-2.amazonaws.com","proxy":"172.31.25.64:8888"}
 '''
 
 CONFIG_FILE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/app.conf.json'
