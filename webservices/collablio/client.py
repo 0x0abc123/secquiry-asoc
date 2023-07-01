@@ -76,10 +76,12 @@ class Client:
         return jsonResponse
 
     # nodesToUpsert is a list of collablio.node.Node
-    def upsertNodes(self, nodesToUpsert):
-        apiNodesList = []
-        for cNode in nodesToUpsert:
-            cnode.recursiveConvertNodesToAPIFormat(cNode, apiNodesList)
+    def upsertNodes(self, nodesToUpsert, convertToAPIFormat = True):
+        apiNodesList = [] if convertToAPIFormat else nodesToUpsert
+        if convertToAPIFormat:
+            for cNode in nodesToUpsert:
+                cnode.recursiveConvertNodesToAPIFormat(cNode, apiNodesList)
+
         serialisedJson = json.dumps(apiNodesList).encode('utf8')
         req = urllib.request.Request(self.host_url+'/upsert', data=serialisedJson, headers={'content-type': 'application/json'})
         #response = urllib.request.urlopen(req)

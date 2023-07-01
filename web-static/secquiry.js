@@ -270,7 +270,7 @@ c_project.actionViewConf.config.showImportButton = true;
 
 let c_folder = createTypeConfigWithDefaults(TYPE_FOLDER, [TYPE_FOLDER, TYPE_CLIENT, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_ANNOTATION, TYPE_FILE, TYPE_IMAGE, TYPE_TAG, TYPE_HOST, TYPE_PORT, TYPE_REPORT, TYPE_SECTION, TYPE_CODE, TYPE_TASK, TYPE_AGENT, TYPE_SERVICE, TYPE_JSON, TYPE_MARKDOWN, TYPE_FINDINGS, TYPE_CREDENTIALS],'ico-folder');
 c_folder.actionViewConf.config.showImportButton = true;
-c_folder.actionViewConf.config.generators = [{'id':'credentials','btnLabel':'Add Credentials'}];
+c_folder.actionViewConf.config.generators = [{'id':'credentials','btnLabel':'Add Credentials'},{'id':'nodeexport','btnLabel':'Export Child Nodes as JSON'}];
 
 let c_host = createTypeConfigWithDefaults(TYPE_HOST, [TYPE_FOLDER, TYPE_PORT, TYPE_IMAGE, TYPE_TEXT, TYPE_NOTE, TYPE_TABLE, TYPE_ANNOTATION, TYPE_FILE],'ico-host',false);
 c_host.getValueForSorting = (node) => {	return convertIPtoNum(node[PROP_LABEL]); }
@@ -2104,7 +2104,7 @@ var v_import_fileupload = new Vue({
 	data: { 
 	   v: _panesIndex['add']['importupload'].v,
 	   filename: 'No File Selected',
-	   options: ['example','nmap','sarif210','srccode']
+	   options: ['example','nmap','sarif210','srccode','cnodejson']
 	},
 	methods : {
         vUpdateFileName: function () {
