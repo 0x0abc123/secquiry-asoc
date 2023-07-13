@@ -186,7 +186,7 @@ async def do_import(fileToImport, metadata_json):
 
             #fetch ports for existing host
             
-            jsonResponse =  fetchNodes(uid = nmapHost.UID, field = cnode.PROP_LASTMOD, op = 'gt', val = '0')
+            jsonResponse =  client.fetchNodes(uid = nmapHost.UID, field = cnode.PROP_LASTMOD, op = 'gt', val = '0')
             for nodeResult in jsonResponse['nodes']:
                 if nodeResult[cnode.PROP_TYPE] in [cnode.TYPE_PORT, cnode.TYPE_ANNOTATION]:
                     lookupExistingChildItems[nodeResult[cnode.PROP_TYPE]+'_'+nodeResult[cnode.PROP_LABEL]] = nodeResult

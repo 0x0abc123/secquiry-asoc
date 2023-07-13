@@ -2104,7 +2104,7 @@ var v_import_fileupload = new Vue({
 	data: { 
 	   v: _panesIndex['add']['importupload'].v,
 	   filename: 'No File Selected',
-	   options: ['example','nmap','sarif210','dsjson','srccode','cnodejson']
+	   options: ['example','nmap','nessus','sarif210','dsjson','srccode','cnodejson']
 	},
 	methods : {
         vUpdateFileName: function () {
