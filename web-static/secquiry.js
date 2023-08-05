@@ -262,13 +262,14 @@ const TYPE_JSON = "Json";
 const TYPE_MARKDOWN = "Markdown";
 const TYPE_FINDINGS = "Findings";
 const TYPE_CREDENTIALS = "Credentials";
+const TYPE_USER = "User";
 
 createTypeConfigWithDefaults(TYPE_CLIENT, [TYPE_FOLDER, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_ANNOTATION, TYPE_FILE],'ico-user');
 
 let c_project = createTypeConfigWithDefaults(TYPE_PROJECT, [TYPE_FOLDER, TYPE_REPORT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_IMAGE, TYPE_ANNOTATION, TYPE_FILE],'ico-book',false);
 c_project.actionViewConf.config.showImportButton = true;
 
-let c_folder = createTypeConfigWithDefaults(TYPE_FOLDER, [TYPE_FOLDER, TYPE_CLIENT, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_ANNOTATION, TYPE_FILE, TYPE_IMAGE, TYPE_TAG, TYPE_HOST, TYPE_PORT, TYPE_REPORT, TYPE_SECTION, TYPE_CODE, TYPE_TASK, TYPE_AGENT, TYPE_SERVICE, TYPE_JSON, TYPE_MARKDOWN, TYPE_FINDINGS, TYPE_CREDENTIALS],'ico-folder');
+let c_folder = createTypeConfigWithDefaults(TYPE_FOLDER, [TYPE_FOLDER, TYPE_CLIENT, TYPE_PROJECT, TYPE_NOTE, TYPE_TABLE, TYPE_TEXT, TYPE_ANNOTATION, TYPE_FILE, TYPE_IMAGE, TYPE_TAG, TYPE_HOST, TYPE_PORT, TYPE_REPORT, TYPE_SECTION, TYPE_CODE, TYPE_TASK, TYPE_AGENT, TYPE_SERVICE, TYPE_JSON, TYPE_MARKDOWN, TYPE_FINDINGS, TYPE_CREDENTIALS,TYPE_USER],'ico-folder');
 c_folder.actionViewConf.config.showImportButton = true;
 c_folder.actionViewConf.config.generators = [{'id':'credentials','btnLabel':'Add Credentials'},{'id':'nodeexport','btnLabel':'Export Child Nodes as JSON'}];
 
@@ -788,10 +789,10 @@ function switchPane(paneType, paneName)
 
 // login/auth ------------------------------------------------------------
 
-const loginURLs = {"oidc_aws":"/webservice/login/sso/oidc_aws","default":"login"}
+const loginURLs = {"oidc_aws":"/api/login/sso/oidc_aws","default":"/api/login/default"}
 var sso_login = '';
 async function loadSSOLoginType() {
-        await fetch('/webservice/ssoconfig')
+        await fetch('/api/ssoconfig')
         .then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
         .then(rdata => {
                 if(rdata && rdata['sso'] && rdata['sso'].length > 0)
@@ -995,7 +996,7 @@ function convertIPtoNum(ipstr) {
 async function upsertGeneric(node)
 {	
 	showLoading(true);
-	await fetch('upsert',{
+	await fetch('/api/upsert',{
 		method: 'POST',
 		headers: {
 			'Authorization': getBearerTokenHeader(),
@@ -1038,7 +1039,7 @@ async function fileupload(node)
 	data.append('type', 'file_upload');
 	data.append('_p', JSON.stringify(params));
 
-	await fetch('upload', {
+	await fetch('/api/upload', {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1076,7 +1077,7 @@ async function importupload(importer,uid, diffscan=false)
 	data.append('type', 'file_upload');
 	data.append('metadata', JSON.stringify(params));
 
-	await fetch('/webservice/import/'+importer, {
+	await fetch('/api/import/'+importer, {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1111,7 +1112,7 @@ async function generate(generator,serialized_params, uid)
 	
 	let data = JSON.stringify(params);
 
-	await fetch('/webservice/generate/'+generator, {
+	await fetch('/api/generate/'+generator, {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1146,7 +1147,7 @@ async function moveNodeToNewParent(node, newParentNode)
 	}
 	showLoading(true);
 
-	await fetch('move',{
+	await fetch('/api/move',{
 		method: 'POST',
 		headers: {
 			'Authorization': getBearerTokenHeader(),
@@ -1234,7 +1235,7 @@ async function fetchInitialNodes()
 {
 	setLastUpdatedTime(0);
 	//this will fetch only the root node:
-	await fetchNodes(null,PROP_LASTMOD,'gt',0,0);
+	await fetchNodes([],PROP_LASTMOD,'gt',0,0);
 	//there should be only two nodes in the index after this initial request:
 	// _index['.'] (the placeholder for root node)
 	// _index['0xN'] (the actual root node
@@ -1252,11 +1253,11 @@ async function fetchInitialNodes()
 // call the API to get nodes modified since the last refresh
 async function fetchNodes(_uids, _field = PROP_LASTMOD, _op = 'gt', _val = _lastUpdateTime_Server, _depth = 0)
 {
-	let data = { field: _field, op: _op, val: `${_val}`, depth: _depth, uids: _uids };
+	let data = { field: _field, op: _op, val: `${_val}`, depth: _depth, uids: _uids, type: '' };
 	let serverResp = {};
 	showLoading(true);
 
-	await fetch('/nodes', {
+	await fetch('/api/nodes', {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		headers: {
@@ -1394,7 +1395,7 @@ async function updateAttachmentNodeIfChangedOrEmpty(node,datafield = PROP_TEXTDA
 	if(node.hasChanged || !node[datafield])
 	{
 		showLoading(true);
-		await fetch('/attachment/'+node[PROP_UID]+'/0',{headers:{'Authorization': getBearerTokenHeader()}})
+		await fetch('/api/attachment/'+node[PROP_UID]+'/0',{headers:{'Authorization': getBearerTokenHeader()}})
 		.then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
 		.then(data => { 
 			updateNodeTree(data);
@@ -1412,7 +1413,11 @@ async function getSignedDownloadUrl(attachmentUid) {
 
 	let queryString = '?';
 
-	await fetch('/downloadtoken/'+attachmentUid,{headers:{'Authorization': getBearerTokenHeader()}})
+	await fetch('/api/tmpauthcookie',{headers:{'Authorization': getBearerTokenHeader()}})
+	.then(response => { if(!response.ok) { throw new Error(response.status); } })
+
+	/*
+	await fetch('/api/downloadtoken/'+attachmentUid,{headers:{'Authorization': getBearerTokenHeader()}})
 	.then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
 	.then(rdata => { 
 		if(rdata && rdata['sig'] && rdata['sig'].length > 0)
@@ -1424,10 +1429,10 @@ async function getSignedDownloadUrl(attachmentUid) {
 		{
 			throw new Error('500');
 		}
-	})
+	})*/
 	.catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
 
-	return '/download/'+attachmentUid+queryString;
+	return '/api/download/'+attachmentUid; //+queryString;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

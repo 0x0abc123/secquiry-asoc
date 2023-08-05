@@ -22,7 +22,7 @@ import io
 
 def save_credentials(metadata_dict):
     auth_token = metadata_dict['auth_token_hdr_val']
-    client = cclient.Client(auth_token)
+    client = cclient.client #Client(auth_token)
 
     plaintext_creds = metadata_dict['creds']
     sstore = secretstore.GetStore()
@@ -49,8 +49,8 @@ def get_credentials(creds_uid=None, creds_label=None):
         raise Exception('Get Credentials must be supplied with either a UID or Label')
     sstore = secretstore.GetStore()
     enc_key_pass = sstore.get('credential_enc_pass')
-    client = cclient.Client()
-    client.setCreds(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
+    client = cclient.client #Client()
+    #client.setCreds(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))
 
     # client fetch node using uid or label
     # get textdata from node

@@ -94,7 +94,7 @@ def generateJsonForRootNode(rootNodeUID, client):
 
 
 async def generate(metadata_dict):
-    client = cclient.Client(metadata_dict['auth_token_hdr_val'])
+    client = cclient.client #Client(metadata_dict['auth_token_hdr_val'])
     # fetch root node plus its children and serialise to json file
     jsonfile = generateJsonForRootNode(metadata_dict['under_uid'], client)
     # upload report as file attachment node

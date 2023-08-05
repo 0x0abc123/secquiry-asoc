@@ -1,9 +1,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-<title>Page Title</title>
+<title>Secquiry</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<!--link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" /-->
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Site Description Here" />
 <link rel="stylesheet" href="bulma.min.css">
@@ -730,12 +730,12 @@
 				<h2>{{v.config.nodeinfo.l}}</h2>
 				<div class="tooloutput">
 					<div v-if="v.config.nodeinfo.d.startsWith('image/')">
-					<img :src="'/download/'+v.config.nodeinfo.uid" id="imgview" class="ptr" onclick="toggleImgFullscreen()">
+					<img :src="'/api/download/'+v.config.nodeinfo.uid" id="imgview" class="ptr" onclick="toggleImgFullscreen()">
 					</div>
 					<div v-else>
 					<h3>Download</h3>
 					<p>
-					<a :href="'/download/'+v.config.nodeinfo.uid">
+					<a :href="'/api/download/'+v.config.nodeinfo.uid">
 					<!--img class="ico-file2"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-file2"></use></svg><br>
 					{{v.config.nodeinfo.l}}</a>
 					<br>({{v.config.nodeinfo.d}})

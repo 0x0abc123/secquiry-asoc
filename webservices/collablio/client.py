@@ -6,12 +6,15 @@ import sys
 import uuid
 import urllib.request
 import urllib.parse
+from shutil import copyfileobj
 import json
 import traceback
 import collablio.node as cnode
 import appconfig
 import io
 import mimetypes
+import secretstore
+import tempfile
 
 COLLABLIO_HOST = appconfig.getValue('collablio_url') #"http://127.0.0.1:5000"
 
@@ -55,7 +58,6 @@ class Client:
         response = self.executeHttpRequest(req)
         jsonResponse =  json.loads(response.read().decode('utf8'))
         if 'nodes' not in jsonResponse:
-            #raise Exception()
             jsonResponse = {'nodes':[]}
         return jsonResponse
 
@@ -65,24 +67,30 @@ class Client:
             querystring += '&body=true'
         return self.fetchNodesRequest(querystring)
 
-    def fetchNodesPost(self, uids = [], field = cnode.PROP_LASTMOD, op = 'gt', val = '0', depth = 20, typ = ''):
-        reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }
-        req = urllib.request.Request(url=self.host_url+'/nodes', data=bytes(json.dumps(reqdata), encoding='utf-8'))
+    def fetchNodesPostObj(self, postdata):
+        #reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }
+        req = urllib.request.Request(url=self.host_url+'/nodes', data=bytes(json.dumps(postdata), encoding='utf-8'))
         req.add_header('Content-Type', 'application/json')
         response = self.executeHttpRequest(req)
         jsonResponse =  json.loads(response.read().decode('utf8'))
-        if 'nodes' not in jsonResponse:
-            raise Exception()
         return jsonResponse
 
-    # nodesToUpsert is a list of collablio.node.Node
-    def upsertNodes(self, nodesToUpsert, convertToAPIFormat = True):
-        apiNodesList = [] if convertToAPIFormat else nodesToUpsert
-        if convertToAPIFormat:
-            for cNode in nodesToUpsert:
-                cnode.recursiveConvertNodesToAPIFormat(cNode, apiNodesList)
+    def fetchNodesPost(self, uids = [], field = cnode.PROP_LASTMOD, op = 'gt', val = '0', depth = 20, typ = ''):
+        reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }        
+        return self.fetchNodesPostObj(reqdata)
 
-        serialisedJson = json.dumps(apiNodesList).encode('utf8')
+    def moveNodesPostObj(self, postdata):
+        #reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }
+        req = urllib.request.Request(url=self.host_url+'/move', data=bytes(json.dumps(postdata), encoding='utf-8'))
+        req.add_header('Content-Type', 'application/json')
+        response = self.executeHttpRequest(req)
+        jsonResponse =  json.loads(response.read().decode('utf8'))
+        return jsonResponse
+
+
+    # nodesToUpsert is a list of collablio.node.Node
+    def upsertNodesPostObj(self, nodeslist):
+        serialisedJson = json.dumps(nodeslist).encode('utf8')
         req = urllib.request.Request(self.host_url+'/upsert', data=serialisedJson, headers={'content-type': 'application/json'})
         #response = urllib.request.urlopen(req)
         response = self.executeHttpRequest(req)
@@ -90,6 +98,12 @@ class Client:
         new_uids = json.loads(response.read().decode('utf8'))
         return new_uids
         
+    def upsertNodes(self, nodesToUpsert, convertToAPIFormat = True):
+        apiNodesList = [] if convertToAPIFormat else nodesToUpsert
+        if convertToAPIFormat:
+            for cNode in nodesToUpsert:
+                cnode.recursiveConvertNodesToAPIFormat(cNode, apiNodesList)
+        return self.upsertNodesPostObj(apiNodesList)
 
     def createFileNode(self, multipartform, api_path='/upload'):
         # Build the request, including the byte-string
@@ -100,8 +114,23 @@ class Client:
         r.add_header('Content-type', multipartform.get_content_type())
         r.add_header('Content-length', len(data))
 
-        respStr = self.executeHttpRequest(r).read().decode('utf-8')
+        return self.executeHttpRequest(r).read().decode('utf-8')
     
+    def downloadFile(self, uid):
+        req = urllib.request.Request(self.host_url+"/authddownload/"+uid)
+        response = self.executeHttpRequest(req)
+        #print(response.headers)
+        #jsonResponse =  json.loads(response.read().decode('utf8'))
+        #out_file = tempfile.SpooledTemporaryFile(max_size=1048576)
+        filename = uid
+        cdisp = response.headers.get("Content-Disposition")
+        if cdisp is not None:
+            filename += "-"+cdisp.split("=")[-1]
+        tmpfilepath = os.path.join(tempfile.gettempdir(),filename)
+        out_file = open(tmpfilepath,"wb")
+        copyfileobj(response, out_file)
+        out_file.close()
+        return (tmpfilepath, response.headers.get('content-type'), cdisp)
 
     def LoginAndGetToken(self, username, password):
         loginData = {'username':username,'password':password}
@@ -186,3 +215,6 @@ class MultiPartForm:
         buffer.write(b'--' + self.boundary + b'--\r\n')
         return buffer.getvalue()
         
+sstore = secretstore.GetStore()
+client = Client()
+client.setCreds(sstore.get('secquiry_user'),sstore.get('secquiry_pass'))

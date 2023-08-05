@@ -47,7 +47,7 @@ async def do_import(fileToImport, metadata_json):
             key = str(uuid.uuid4())
         return key
         
-    client = cclient.Client(metadata_json['auth_token_hdr_val'])
+    client = cclient.client #Client(metadata_json['auth_token_hdr_val'])
     
     nodeUIDToImportUnder = ''
     nodeLabelToImportUnder = fileToImport.filename

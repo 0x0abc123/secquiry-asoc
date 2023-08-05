@@ -12,7 +12,8 @@ PROP_BINARYDATA = "b"
 PROP_EDITING = "e"
 PROP_PARENTLIST = "in"
 PROP_CHILDLIST = "out"
-PROP_RELATIONS = "lnk"
+PROP_LINKLIST = "lnk"
+PROP_INLINKLIST = "inl"
 
 TYPE_CLIENT = "Client"
 TYPE_PROJECT = "Project"
@@ -34,6 +35,7 @@ TYPE_JSON = "Json"
 TYPE_MARKDOWN = "Markdown"
 TYPE_TASK = "Task"
 TYPE_CREDENTIALS = "Credentials"
+TYPE_USER = "User"
 
 class Node:
     

@@ -1,5 +1,6 @@
 fastapi[all]
 cryptography
 python-docx
+python-multipart
 greenstalk
 pyjwt

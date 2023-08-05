@@ -194,8 +194,8 @@ def convertQuillOpsToDOCX(quilljsondata, doc, curdepth, otherAttachments = None)
     endOfNoteLine = { 'content': '', 'formatting': 'ENDOFNOTESTYLE' }
     cleanedLines.append(endOfNoteLine)
 
-    for line2 in cleanedLines:
-        print(str(line2['formatting'])+' '+line2['content'])
+    #for line2 in cleanedLines:
+    #    print(str(line2['formatting'])+' '+line2['content'])
 
 
 
@@ -258,7 +258,7 @@ def convertQuillOpsToDOCX(quilljsondata, doc, curdepth, otherAttachments = None)
 CMS = 360000
 
 def convertJexcelJsonToDOCX(jexcelJsonString, doc, curdepth, otherAttachments = None):
-    print(jexcelJsonString)
+    #print(jexcelJsonString)
     '''
     t  = doc1.add_table(2,2)
     t.columns[0].width = int(1.5*INCHES)
@@ -310,9 +310,9 @@ def sortNodes(uidDict):
     
 # don't call this on the reportRootNode, ignore it and only create its child sections
 def docx_generate(docx, reportTreeNode, depth):
-    print('generate')
+    #print('generate')
     if not reportTreeNode:
-        print('calling generate on a None reportTreeNode')
+        #print('calling generate on a None reportTreeNode')
         return
     
     if reportTreeNode[cnode.PROP_TYPE] not in [cnode.TYPE_SECTION, cnode.TYPE_NOTE, cnode.TYPE_TEXT, cnode.TYPE_IMAGE, cnode.TYPE_TABLE]:
@@ -383,7 +383,7 @@ def generateReportForReportNode(reportRootNodeUID, client):
 
         for nodeResult in jsonResponse['nodes']:
             storeNode(nodeResult)
-            print(str(nodeResult))
+            #print(str(nodeResult))
 
         reportRootNode = getNodeForUID(reportRootNodeUID)
         
@@ -408,7 +408,7 @@ def generateReportForReportNode(reportRootNodeUID, client):
         
         reportSaveName = REPORT_TMP_DIR+'report-'+str(int(time.time()))+str(uuid.uuid4()).replace('-','')[:4]+'.docx'
         newdoc.save(reportSaveName)
-        print(reportSaveName)
+        #print(reportSaveName)
         return reportSaveName
             
     except Exception as e:
@@ -418,7 +418,7 @@ def generateReportForReportNode(reportRootNodeUID, client):
 
 
 async def generate(metadata_dict):
-    client = cclient.Client(metadata_dict['auth_token_hdr_val'])
+    client = cclient.client #Client(metadata_dict['auth_token_hdr_val'])
     # fetch report root node and generate report docx file
     reportfile = generateReportForReportNode(metadata_dict['under_uid'], client)
     # upload report as file attachment node

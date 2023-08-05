@@ -1,16 +1,35 @@
 import appconfig
 import logger
 import collablio.client as cclient
+import collablio.node as cnode
 import secretstore
+import base64
 import jwt
+import json
+import os
 import time
 import urllib.request
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
+PASSWD_FIELD = 'pass'
+SSO_FIELD = 'sso'
+JWT_ALG = "HS256"
+
 pubkey_cache = {'oidc_aws':{}}
-client = cclient.Client()
-sstore = secretstore.GetStore()
+client = cclient.client 
+loggedin_users = {}
+
+def random_secret():
+    randompassvals = os.urandom(32)
+    passcharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()-=_+:;{}[]|,./?><~"
+    passchars = len(passcharset)
+    randompass = ''
+    for i in randompassvals:
+        randompass += passcharset[i % passchars]
+    return randompass
+
+JWT_SECRET_KEY = random_secret()
 
 def get_pubkey(ssotype, kid):
     global pubkey_cache
@@ -56,13 +75,10 @@ def login_oidc_aws(reqdata):
     kid = jwthdr['kid']
     public_key = get_pubkey('oidc_aws',kid)
     jwtclaims = jwt.decode(oidc_jwt, public_key, algorithms=jwthdr["alg"])
-    #{'name':jwtclaims['unique_name'],'tenant':jwtclaims['tid'],'exp':jwtclaims['exp']}
     issuer = appconfig.getValue("oidc_iss")
     if issuer != None and jwtclaims['iss'] == issuer:
         if int(jwtclaims['exp']) > int(time.time()):
-            password = sstore.get('sso_auth_key')
-            username = getUserFromJWTClaims(jwtclaims)
-            authtoken = client.LoginAndGetToken(username, password)
+            authtoken = login_default({"user":getUserFromJWTClaims(jwtclaims)},True)
             return authtoken
         else:
             logger.logEvent(f'authhelper: expired token')
@@ -70,3 +86,64 @@ def login_oidc_aws(reqdata):
         logger.logEvent(f'authhelper: fail to match issuer {issuer} to JWT claims issuer: {jwtclaims["iss"]}')
 
     return None
+
+def hash_password(password_str):
+    salt = os.urandom(16)
+    saltstr = base64.urlsafe_b64encode(salt).decode('utf-8')
+    return f'{saltstr}${secretstore.deriveKey(password_str,saltstr).decode("utf-8")}'
+
+def verify_password(plaintxtpswd, salt_and_derivedpasswd):
+    tmps = salt_and_derivedpasswd.split('$')
+    ssalt = tmps[0]
+    spass = tmps[1]
+    expectedkey = secretstore.deriveKey(plaintxtpswd,ssalt).decode("utf-8")
+    return expectedkey == spass
+
+def get_uid_if_loggedin(jwtbearertoken):
+    payload = jwt.decode(jwtbearertoken, JWT_SECRET_KEY, algorithms=[JWT_ALG])
+    uid = payload.get(cnode.PROP_UID)
+    if uid:
+        if loggedin_users.get(uid) is not None:
+            return uid
+        else:
+            raise Exception("User is not logged in")        
+    raise Exception("JWT Payload missing UID")
+
+def login_default(logindata, ssologin=False):
+    global loggedin_users
+    jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = logindata['username'], ntype = cnode.TYPE_USER)
+    if 'nodes' in jsonResponse and len(jsonResponse['nodes']) == 1:
+        usernodeReturned = jsonResponse['nodes'][0]
+        usrdata_json = usernodeReturned[cnode.PROP_CUSTOM]
+        usrdata = json.loads(usrdata_json)
+        if (ssologin and usrdata.get(SSO_FIELD)) or verify_password(logindata['password'], usrdata[PASSWD_FIELD]):            
+            user_uid = usernodeReturned[cnode.PROP_UID]
+            loggedin_users[user_uid] = {}
+            return get_jwt(logindata['username'], user_uid)
+
+    return None
+
+def get_jwt(sub, for_uid):
+    payload_data = {
+        "sub": sub,
+        cnode.PROP_UID: for_uid
+    }
+    token = jwt.encode(
+        payload=payload_data,
+        key=JWT_SECRET_KEY,
+        algorithm=JWT_ALG
+    )
+    return token
+
+
+def test_create_user(userdata):
+    newusrname = userdata.get("username")
+    newusrpswd = userdata.get("password")
+    newusrsso = userdata.get("sso")
+    if not newusrpswd and not newusrname:
+        return None
+    newusernode = cnode.Node(cnode.TYPE_USER)
+    newusernode.Label = newusrname
+    newusernode.CustomData = json.dumps({PASSWD_FIELD:hash_password(newusrpswd), SSO_FIELD:newusrsso})
+    nodesToUpsert = [newusernode]
+    return client.upsertNodes(nodesToUpsert)

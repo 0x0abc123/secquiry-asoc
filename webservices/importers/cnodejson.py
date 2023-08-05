@@ -10,7 +10,7 @@ curl -kv -X POST  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 '''
 async def do_import(fileToImport, metadata_json):
 
-    client = cclient.Client(metadata_json['auth_token_hdr_val'])
+    client = cclient.client #Client(metadata_json['auth_token_hdr_val'])
     
     nodeUIDToImportUnder = ''
     nodeLabelToImportUnder = fileToImport.filename
