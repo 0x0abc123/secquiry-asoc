@@ -75,18 +75,10 @@ def returnStatus(statuscode):
     response.status_code = lookup[statuscode]
     return response
 
-def get_tmpauth(user_uid):
-    response = Response()
-    response.set_cookie(
-        "Authorization", 
-        authhelpers.get_jwt("tmpauth", user_uid), 
-        max_age=60, 
-        path="/", 
-        secure=True, 
-        httponly=True, 
-        samesite="strict")
-    return response
-
+"""
+you can use request.state.your_custom_param  to pass data on to the route handlers from the middleware
+https://stackoverflow.com/questions/64602770/how-can-i-set-attribute-to-request-object-in-fastapi-from-middleware
+"""
 @app.middleware("http")
 async def check_auth(request: Request, call_next):
     p = request.url.path
@@ -103,15 +95,27 @@ async def check_auth(request: Request, call_next):
             return returnStatus("400")
 
         try:
-            user_uid = authhelpers.get_uid_if_loggedin(auth_hdr)
+            request.state.user_uid = authhelpers.get_uid_if_loggedin(auth_hdr)
         except Exception as e:
             return returnStatus("401")
 
-    if p == "/tmpauthcookie":
-        return get_tmpauth(user_uid)
-
     response = await call_next(request)
     return response
+
+@app.get("/tmpauthcookie")
+def get_tmpauth(request: Request):
+    user_uid = request.state.user_uid
+    response = Response()
+    response.set_cookie(
+        "Authorization", 
+        authhelpers.create_jwt("tmpauth", user_uid), 
+        max_age=60, 
+        path="/", 
+        secure=True, 
+        httponly=True, 
+        samesite="strict")
+    return response
+
 
 
 # curl -kv -X POST  -F 'file=@test.js' -F 'metadata={"a":"123"}' https://10.3.3.83/webservice/import/example

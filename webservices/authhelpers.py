@@ -119,11 +119,11 @@ def login_default(logindata, ssologin=False):
         if (ssologin and usrdata.get(SSO_FIELD)) or verify_password(logindata['password'], usrdata[PASSWD_FIELD]):            
             user_uid = usernodeReturned[cnode.PROP_UID]
             loggedin_users[user_uid] = {}
-            return get_jwt(logindata['username'], user_uid)
+            return create_jwt(logindata['username'], user_uid)
 
     return None
 
-def get_jwt(sub, for_uid):
+def create_jwt(sub, for_uid):
     payload_data = {
         "sub": sub,
         cnode.PROP_UID: for_uid
