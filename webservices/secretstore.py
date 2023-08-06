@@ -3,10 +3,7 @@ import json
 import base64
 import traceback
 import logger
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
+import cryptohelpers
 
 AWS_SUPPORTED = True
 try:
@@ -51,27 +48,6 @@ def GetStore():
     else:
         return LocalStore(conf['location'])
 
-# returns base64 urlsafe encoded (32)bytes, salt is 16 bytes (base64 encoded urlsafe)
-def deriveKey(passwordString, saltB64String):
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=base64.urlsafe_b64decode(saltB64String),
-        iterations=390000,
-        backend=default_backend()
-    )
-    derivedKey = base64.urlsafe_b64encode(kdf.derive(bytes(passwordString,'utf-8')))
-    return derivedKey
-
-def encrypt(plaintextToEncrypt, passwordString, saltB64String):
-    key = deriveKey(passwordString, saltB64String)
-    f = Fernet(key)
-    return base64.urlsafe_b64encode(f.encrypt(bytes(plaintextToEncrypt,'utf-8'))).decode('utf-8')
-
-def decrypt(ciphertextToDecrypt, passwordString, saltB64String):
-    key = deriveKey(passwordString, saltB64String)
-    f = Fernet(key)
-    return f.decrypt(base64.urlsafe_b64decode(ciphertextToDecrypt)).decode('utf-8')
 
 class AWSStore:
     def __init__(self, locationstring="ap-southeast-2/secquiry-asoc"):
@@ -164,11 +140,11 @@ class LocalStore:
 
     def encryptSecrets(self):
         for key in self.decryptedSecrets:
-            self.encryptedSecrets[key] = encrypt(self.decryptedSecrets[key], self.passwordStr, self.saltB64Str)
+            self.encryptedSecrets[key] = cryptohelpers.fernet_encrypt(self.decryptedSecrets[key], self.passwordStr, self.saltB64Str)
 
     def decryptSecrets(self):
         for key in self.encryptedSecrets:
-            self.decryptedSecrets[key] = decrypt(self.encryptedSecrets[key], self.passwordStr, self.saltB64Str)
+            self.decryptedSecrets[key] = cryptohelpers.fernet_decrypt(self.encryptedSecrets[key], self.passwordStr, self.saltB64Str)
 
             
     def store(self, nameString, valueString):

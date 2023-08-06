@@ -199,7 +199,7 @@ async function populateCodeEdit(nodeinfo) {
 	if (!nodeLanguage)
 		nodeLanguage = "plaintext";
 	let hljsLangScript = document.createElement("script");
-	hljsLangScript.setAttribute("src", "hljs/languages/"+nodeLanguage+".min.js");
+	hljsLangScript.setAttribute("src", "/hljs/languages/"+nodeLanguage+".min.js");
 	dtjsdiv.appendChild(hljsLangScript);
 		
 	let counter = 0;

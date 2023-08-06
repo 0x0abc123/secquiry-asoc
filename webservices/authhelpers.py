@@ -2,7 +2,7 @@ import appconfig
 import logger
 import collablio.client as cclient
 import collablio.node as cnode
-import secretstore
+import cryptohelpers
 import base64
 import jwt
 import json
@@ -14,6 +14,9 @@ from cryptography.hazmat.primitives import serialization
 
 PASSWD_FIELD = 'pass'
 SSO_FIELD = 'sso'
+AESGCMSECRETS_FIELD = 'aessecrets'
+ADMIN_FIELD = 'isadmin'
+
 JWT_ALG = "HS256"
 
 pubkey_cache = {'oidc_aws':{}}
@@ -90,21 +93,25 @@ def login_oidc_aws(reqdata):
 def hash_password(password_str):
     salt = os.urandom(16)
     saltstr = base64.urlsafe_b64encode(salt).decode('utf-8')
-    return f'{saltstr}${secretstore.deriveKey(password_str,saltstr).decode("utf-8")}'
+    return f'{saltstr}${cryptohelpers.deriveKey(password_str,saltstr).decode("utf-8")}'
 
 def verify_password(plaintxtpswd, salt_and_derivedpasswd):
     tmps = salt_and_derivedpasswd.split('$')
     ssalt = tmps[0]
     spass = tmps[1]
-    expectedkey = secretstore.deriveKey(plaintxtpswd,ssalt).decode("utf-8")
+    expectedkey = cryptohelpers.deriveKey(plaintxtpswd,ssalt).decode("utf-8")
     return expectedkey == spass
 
-def get_uid_if_loggedin(jwtbearertoken):
+def verify_jwt_get_uid(jwtbearertoken):
     payload = jwt.decode(jwtbearertoken, JWT_SECRET_KEY, algorithms=[JWT_ALG])
-    uid = payload.get(cnode.PROP_UID)
+    return payload.get(cnode.PROP_UID)
+
+def get_usrdata_if_loggedin(jwtbearertoken):
+    uid = verify_jwt_get_uid(jwtbearertoken)
     if uid:
-        if loggedin_users.get(uid) is not None:
-            return uid
+        usrdata = loggedin_users.get(uid)
+        if usrdata is not None:
+            return usrdata
         else:
             raise Exception("User is not logged in")        
     raise Exception("JWT Payload missing UID")
@@ -118,7 +125,10 @@ def login_default(logindata, ssologin=False):
         usrdata = json.loads(usrdata_json)
         if (ssologin and usrdata.get(SSO_FIELD)) or verify_password(logindata['password'], usrdata[PASSWD_FIELD]):            
             user_uid = usernodeReturned[cnode.PROP_UID]
-            loggedin_users[user_uid] = {}
+            del usrdata[PASSWD_FIELD]
+            usrdata['uid'] = user_uid
+            usrdata[AESGCMSECRETS_FIELD] = cryptohelpers.generateAESGCMSecrets()
+            loggedin_users[user_uid] = usrdata
             return create_jwt(logindata['username'], user_uid)
 
     return None

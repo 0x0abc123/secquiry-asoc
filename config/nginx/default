@@ -27,25 +27,17 @@ server {
 	root /var/www/secquiry-asoc;
 	index index.html;
 
-	# collablio
-	############
+	# secquiry app
+	#######################
 
-	#location / {
-	#proxy_pass         http://127.0.0.1:5000;
-	#proxy_set_header   X-Real-IP $remote_addr;
-	#proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-	#proxy_set_header   X-Forwarded-Proto http;
-	#proxy_set_header   Host $http_host;
-	#proxy_connect_timeout   1m;
-	#proxy_send_timeout      1m;
-	#proxy_read_timeout      1m;
-	#}
-
-	location /xxxxapi {
-	proxy_pass         http://127.0.0.1:5000;
-	rewrite ^/api(/.*) $1 break;
+	location /app/api {
+	proxy_pass         http://127.0.0.1:8800;
+	rewrite ^/app/api(/.*) $1 break;
 	proxy_http_version 1.1;
 
+	# Ensuring it can use websockets
+	proxy_set_header   Upgrade $http_upgrade;
+	proxy_set_header   Connection "upgrade";
 	proxy_set_header   X-Real-IP $remote_addr;
 	proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
 	proxy_set_header   X-Forwarded-Proto http;
@@ -58,12 +50,12 @@ server {
 	proxy_read_timeout      1m;
 	}
 
-	# secquiry webservices
+	# secquiry admin
 	#######################
 
-	location /api {
-	proxy_pass         http://127.0.0.1:8800;
-	rewrite ^/api(/.*) $1 break;
+	location /admin/api {
+	proxy_pass         http://127.0.0.1:8801;
+	rewrite ^/admin/api(/.*) $1 break;
 	proxy_http_version 1.1;
 
 	# Ensuring it can use websockets
@@ -89,22 +81,3 @@ server {
 
 }
 
-
-# Virtual Host configuration for example.com
-#
-# You can move that to a different file under sites-available/ and symlink that
-# to sites-enabled/ to enable it.
-#
-#server {
-#	listen 80;
-#	listen [::]:80;
-#
-#	server_name example.com;
-#
-#	root /var/www/example.com;
-#	index index.html;
-#
-#	location / {
-#		try_files $uri $uri/ =404;
-#	}
-#}

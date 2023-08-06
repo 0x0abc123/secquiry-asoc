@@ -1,0 +1,1103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<title>Secquiry</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Secquiry Security Platform" />
+<link rel="stylesheet" href="/bulma.min.css">
+<link rel="stylesheet" href="/quill.snow.css">
+<link rel="stylesheet" href="/jexcel.css" type="text/css" />
+<link rel="stylesheet" href="/jsuites.css" type="text/css" />
+<link rel="stylesheet" href="secquiry.css">
+<link rel="stylesheet" href="secquiry-codeedit.css">
+<link rel="stylesheet" href="/hljs/styles/default.css">
+<link rel="stylesheet" href="/jsonviewer/json-viewer.css">
+
+
+<!-- item template -->
+<template type="text/x-template" id="item-template">
+  <li>
+
+	<div class="nowrap" :style="[{textIndent: getIndent},isCurrentlySelected() ? {'background-color' : '#CCEEFF'} : {}]" @contextmenu="showCtxMenu($event,item.uid)" 
+		draggable @dragstart="startDrag($event,item.uid)" @drop='onDrop($event)' @dragover.prevent @dragenter.prevent >
+	<span><!--img v-bind:class="getIcon()"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getIcon()"></use></svg></span>
+	<span v-bind:style="[item.isViewed ? {} : {'font-weight': 'bold'}]" class="arrow" @click="viewNode($event,item.uid)">{{ item.l }}</span><!--{{ name() }}-->
+	<span v-if="item.showChildren && item.out && item.out.length" @click="toggle(item.uid)">
+	<span v-if="isOpen"><!--img class="ico-sqminus"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-sqminus"></use></svg></span>
+	<span v-else><!--img class="ico-sqplus"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-sqplus"></span>
+	</span>
+	</div>
+	<!--ul v-show="isOpen" v-if="hasChildren"-->
+	<ul v-show="isOpen" v-if="item.showChildren && item.outrefs && item.outrefs.length">
+	  <tree-item
+		:ref="item.uid"
+		v-for="(child, index) in item.outrefs"
+		:key="item.uid"
+		:item="child"
+		:depth="depth+1"
+		@make-folder="$emit('make-folder', $event)"
+		@add-item="$emit('add-item', $event)"
+	  ></tree-item>
+	</ul>
+  </li>
+</template>
+
+</head>
+<body onresize="ResetColumnSizes()">
+
+<svg style="display: none;"><defs>
+    <g id="shape-icon-2" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+	  <circle cx='12' cy='12' r='10'></circle><line x1='15' y1='9' x2='9' y2='15'></line><line x1='9' y1='9' x2='15' y2='15'></line>
+    </g>
+</defs></svg>
+
+<svg style="display: none;"><defs>
+    <g id="ico-edit" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M12 20h9'></path><path d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z'></path>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-del" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><line x1='15' y1='9' x2='9' y2='15'></line><line x1='9' y1='9' x2='15' y2='15'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-new" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'></path><polyline points='14 2 14 8 20 8'></polyline><line x1='12' y1='18' x2='12' y2='12'></line><line x1='9' y1='15' x2='15' y2='15'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-left" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><polyline points='12 8 8 12 12 16'></polyline><line x1='16' y1='12' x2='8' y2='12'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-sqminus" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect><line x1='8' y1='12' x2='16' y2='12'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-sqplus" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect><line x1='12' y1='8' x2='12' y2='16'></line><line x1='8' y1='12' x2='16' y2='12'></line>
+    </g>
+</defs></svg>
+
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-miscfile" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z'></path><polyline points='13 2 13 9 20 9'></polyline>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-folder" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'></path>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-move" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<polyline points='5 9 2 12 5 15'></polyline><polyline points='9 5 12 2 15 5'></polyline><polyline points='15 19 12 22 9 19'></polyline><polyline points='19 9 22 12 19 15'></polyline><line x1='2' y1='12' x2='22' y2='12'></line><line x1='12' y1='2' x2='12' y2='22'></line>
+    </g>
+</defs></svg>
+
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-copy" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<rect x='9' y='9' width='13' height='13' rx='2' ry='2'></rect><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'></path>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-user" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'></path><circle cx='12' cy='7' r='4'></circle>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-book" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'></path><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'></path>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-host" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<line x1='22' y1='12' x2='2' y2='12'></line><path d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'></path><line x1='6' y1='16' x2='6.01' y2='16'></line><line x1='10' y1='16' x2='10.01' y2='16'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-hash" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<line x1='4' y1='9' x2='20' y2='9'></line><line x1='4' y1='15' x2='20' y2='15'></line><line x1='10' y1='3' x2='8' y2='21'></line><line x1='16' y1='3' x2='14' y2='21'></line>
+    </g>
+</defs></svg>
+
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-code" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<polyline points='16 18 22 12 16 6'></polyline><polyline points='8 6 2 12 8 18'></polyline>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-img" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect><circle cx='8.5' cy='8.5' r='1.5'></circle><polyline points='21 15 16 10 5 21'></polyline>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-note" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'></path><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'></path>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-table" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<rect x='3' y='3' width='7' height='7'></rect><rect x='14' y='3' width='7' height='7'></rect><rect x='14' y='14' width='7' height='7'></rect><rect x='3' y='14' width='7' height='7'></rect>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-info" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><line x1='12' y1='16' x2='12' y2='12'></line><line x1='12' y1='8' x2='12.01' y2='8'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-tag" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z'></path><line x1='7' y1='7' x2='7.01' y2='7'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-report" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<line x1='8' y1='6' x2='21' y2='6'></line><line x1='8' y1='12' x2='21' y2='12'></line><line x1='8' y1='18' x2='21' y2='18'></line><line x1='3' y1='6' x2='3.01' y2='6'></line><line x1='3' y1='12' x2='3.01' y2='12'></line><line x1='3' y1='18' x2='3.01' y2='18'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-mark" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'></path>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-send" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<line x1='22' y1='2' x2='11' y2='13'></line><polygon points='22 2 15 22 11 13 2 9 22 2'></polygon>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-left-arr" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><polyline points='12 8 8 12 12 16'></polyline><line x1='16' y1='12' x2='8' y2='12'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-right-arr" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><polyline points='12 16 16 12 12 8'></polyline><line x1='8' y1='12' x2='16' y2='12'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-left-arr-dis" viewBox='0 0 24 24' fill='none' stroke='LightGrey' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><polyline points='12 8 8 12 12 16'></polyline><line x1='16' y1='12' x2='8' y2='12'></line>
+    </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-right-arr-dis" viewBox='0 0 24 24' fill='none' stroke='LightGrey' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><polyline points='12 16 16 12 12 8'></polyline><line x1='8' y1='12' x2='16' y2='12'></line>
+    </g>
+</defs></svg>
+
+<svg style="display: none;"><defs>
+    <g id="ico-key" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+    </g>
+</defs></svg>
+
+<!--
+<svg style="display: none;"><defs>
+    <g id="ico-load">
+<g><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#000"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(45 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(90 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(135 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#bebebe" transform="rotate(180 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#979797" transform="rotate(225 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#6e6e6e" transform="rotate(270 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#3c3c3c" transform="rotate(315 64 64)"/><animateTransform attributeName="transform" type="rotate" values="0 64 64;45 64 64;90 64 64;135 64 64;180 64 64;225 64 64;270 64 64;315 64 64" calcMode="discrete" dur="720ms" repeatCount="indefinite"></animateTransform></g><g><circle fill="#000" cx="63.66" cy="63.16" r="12"/><animate attributeName="opacity" dur="720ms" begin="0s" repeatCount="indefinite" keyTimes="0;0.5;1" values="1;0;1"/></g>
+   </g>
+</defs></svg>
+
+
+<svg style="display: none;"><defs>
+    <g id="ico-logo" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><line x1='14.31' y1='8' x2='20.05' y2='17.94'></line><line x1='9.69' y1='8' x2='21.17' y2='8'></line><line x1='7.38' y1='12' x2='13.12' y2='2.06'></line><line x1='9.69' y1='16' x2='3.95' y2='6.06'></line><line x1='14.31' y1='16' x2='2.83' y2='16'></line><line x1='16.62' y1='12' x2='10.88' y2='21.94'></line>
+   </g>
+</defs></svg>
+-->
+
+<svg style="display: none;"><defs>
+    <g id="ico-upload" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'></path><polyline points='17 8 12 3 7 8'></polyline><line x1='12' y1='3' x2='12' y2='15'></line>
+   </g>
+</defs></svg>
+
+<svg style="display: none;"><defs>
+    <g id="ico-file2" viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'></path><polyline points='14 2 14 8 20 8'></polyline><line x1='16' y1='13' x2='8' y2='13'></line><line x1='16' y1='17' x2='8' y2='17'></line><polyline points='10 9 9 9 8 9'></polyline>
+   </g>
+</defs></svg>
+
+
+
+<div id="body_container" onclick="HideContextMenu()">
+
+
+ <div id="ctxmenu-div" class="ctxmenu box has-background-light p-2" style="display: none">
+   <ul id="v_ctxmenu">
+    <li><b>Actions</b></li>
+	<li v-for="optM in vdata.ctxmenuData.mainOptions" @click="ctxmenuAction($event,optM,vdata.ctxmenuData.uid)"><!--img class="ico-edit"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-edit"></use></svg>{{optM}}</li>
+	<li v-for="optA in vdata.ctxmenuData.addOptions" @click="ctxmenuAction($event,optA,vdata.ctxmenuData.uid)"><!--img class="ico-new"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-new"></use></svg>{{optA.replace('+','add ')}}</li>
+   </ul>
+</div>
+
+
+<!-- top nav bar -->
+<nav id="topnavbar" class="level box p-1">
+
+  <!-- Left side -->
+  <div class="level-left ml-3">
+    <div class="level-item mr-1">
+	<!--img id="id_logo" class="ico-logo" onClick=""--><!--svg id="id_logo" class="inln" width='2em' height='2em' viewBox='0 0 24 24'><use href="#ico-logo"></use></svg-->
+
+<img src="/logo.svg" style="height:30px;width:auto; margin:4px;">
+<!--svg id="ico-logo" class="inln" width='2em' height='2em' viewBox='0 0 24 24'>
+    <g viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
+<circle cx='12' cy='12' r='10'></circle><line x1='14.31' y1='8' x2='20.05' y2='17.94'></line><line x1='9.69' y1='8' x2='21.17' y2='8'></line><line x1='7.38' y1='12' x2='13.12' y2='2.06'></line><line x1='9.69' y1='16' x2='3.95' y2='6.06'></line><line x1='14.31' y1='16' x2='2.83' y2='16'></line><line x1='16.62' y1='12' x2='10.88' y2='21.94'></line>
+   </g>
+</svg>
+
+<svg id="ico-load" class="inln"  width='2em' height='2em' viewBox='0 0 128 128' style="display: none;">
+<g><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#000"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(45 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(90 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#e1e1e1" transform="rotate(135 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#bebebe" transform="rotate(180 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#979797" transform="rotate(225 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#6e6e6e" transform="rotate(270 64 64)"/><path d="M71 39.2V.4a63.6 63.6 0 0 1 33.96 14.57L77.68 42.24a25.53 25.53 0 0 0-6.7-3.03z" fill="#3c3c3c" transform="rotate(315 64 64)"/><animateTransform attributeName="transform" type="rotate" values="0 64 64;45 64 64;90 64 64;135 64 64;180 64 64;225 64 64;270 64 64;315 64 64" calcMode="discrete" dur="720ms" repeatCount="indefinite"></animateTransform></g><g><circle fill="#000" cx="63.66" cy="63.16" r="12"/><animate attributeName="opacity" dur="720ms" begin="0s" repeatCount="indefinite" keyTimes="0;0.5;1" values="1;0;1"/></g>
+</svg-->
+
+
+    </div>
+    <!--div class="level-item">
+      <p class="subtitle is-3 ptr" onClick="">
+        <strong>secquiry</strong>
+      </p>
+    </div-->
+    <div id="v_topsearch" class="level-item">
+      <div class="field has-addons">
+        <p class="control">
+          <input class="input is-small" type="text" style="width: 30vw;" v-model="query" :placeholder="'Search within '+v.node.l">
+        </p>
+        <p class="control">
+          <button class="button is-small" @click="vDoSearch()">
+            Search
+          </button>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side -->
+  <div id="v_topnav" class="level-right">
+    <p class="level-item"><strong>{{getLabel}}</strong></p>
+    <p class="level-item is-size-3 ptr" @click="vNavBack()"><!--img style="stroke: blue;" v-bind:class="iconBack"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+iconBack"></use></svg></p>
+    <p class="level-item is-size-3 ptr" @click="vNavFwd()"><!--img v-bind:class="iconFwd"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+iconFwd"></use></svg></p>
+
+    <p class="level-item"  @click="vSync()"><a class="button is-small">Sync</a></p>
+    <p class="level-item"><a @click="vNavUp()" class="button is-success is-small">Up</a></p>
+  </div>
+
+</nav>
+
+<!-- columns view (tree + main panes) -->
+
+<div id="pageFrame">
+  <div id="page" onmouseup="EndDrag()" onmousemove="OnDrag(event)">
+
+    <div id="left_pane" class="pl-3 pr-3">
+ 	  <div id="tree_pane" class="">
+		<ul id="v_tree_pane">
+		  <ctxmenu></ctxmenu>
+		  <tree-item
+		    :ref="treeData.root.uid"
+			:depth="0"
+			:item="treeData.root"
+		  ></tree-item>
+		</ul>
+	  </div>
+    </div>
+	
+    <div id="dragbar" onmousedown="StartLeftDrag()"></div>
+
+    <div id="right_pane" class="pl-3 pr-3">
+	 
+
+		<div id="othermain_search" class="box content" style="display: none">
+		<!--////VueBinding////-->
+			<div id="v_othermain_search">
+				<h2>Search Results</h2>
+				<div class="mpprojects">
+				  
+				  <div class="box">
+					<div class="box">
+						<p>{{v.config.results.nodes.length}} Results were located under {{v.config.results.nodelabel}} for "{{v.config.results.query}}"</p>
+					</div>
+					<div v-for="(result, index) in v.config.results.nodes" class="mb-1">
+					<!-- TODO: allow cloning of items but need to fetch attachment body if it hasnt been populated yet -->
+					<!-- the same issue does not occur when cloning from the view or edit pane because the body has been loaded -->
+					<!-- maybe add a hasAttachmentBody field to the typeConfig?? -->
+
+						<div class="columns is-vcentered">
+							<div class="column is-4 ptr pl-2" @click="viewNode($event,result.uid)"><!--img v-bind:class="getTypeIcon(result)"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(result)"></use></svg> {{result.l}}</div>
+							<div class="column is-8 ptr pl-5" @click="viewNode($event,result.uid)">{{result.d}}</div>
+						</div>
+
+					</div>
+
+				  </div>
+
+				</div>
+			</div>
+		</div>
+
+	 
+		<div id="view_default" class="box content" style="display: none">
+		<!--////VueBinding////-->
+			<div id="v_view_default">
+				<h2><!--img v-bind:class="getTypeIcon(v.config.nodeinfo)"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(v.config.nodeinfo)"></use></svg> {{v.config.nodeinfo.l}}</h2>
+				<div class="mpprojects">
+				  <div class="box">
+					<p class="subtitle">Detail</p>
+					<div class="mono">{{v.config.nodeinfo.d}}</div>
+				  </div>
+				  <div class="box">
+					<p class="subtitle">Custom Data Field</p>
+					<div class="mono">{{v.config.nodeinfo.c}}</div>
+				  </div>
+				  <div class="box" v-if="v.config.showImportButton">
+					<p class="subtitle">Import</p>
+					<span><a class="button is-primary" @click="clickImport($event,v.config.nodeinfo.uid)">Import Tool Output</a></span>
+				  </div>
+				  <div class="box" v-if="v.config.generators">
+					<p class="subtitle">Generate</p>
+					<div v-for="(generator, index) in v.config.generators" class="mb-1">
+						<span><a class="button is-primary" @click="clickGenerate($event,generator.id,v.config.nodeinfo.uid)">{{generator.btnLabel}}</a></span>
+					</div>
+				  </div>
+				  <div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
+					<p class="subtitle">List of Child Items</p>
+					<div v-for="(child, index) in v.config.nodeinfo.outrefs" class="mb-1">
+					<!-- TODO: allow cloning of items but need to fetch attachment body if it hasnt been populated yet -->
+					<!-- the same issue does not occur when cloning from the view or edit pane because the body has been loaded -->
+					<!-- maybe add a hasAttachmentBody field to the typeConfig?? -->
+
+					<div class="columns is-vcentered">
+						<!--div class="column is-3"><span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span></div>
+						<div class="column is-4 ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</div>
+						<div class="column is-5 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div-->
+
+						<div class="column is-6"><span>
+						<span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span>
+						<span class="ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</span>
+						</span></div>
+						<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
+					</div>
+
+					</div>
+					<div class="box" v-if="v.config.nodeinfo.out.length > 0 && v.config.nodeinfo.outrefs.length < 1">
+						<a class="button is-info" @click="loadChildren(v.config.nodeinfo.uid)">Show Child Items</a>
+					</div>
+					<div class="box" v-if="v.config.nodeinfo.out.length < 1">
+						<p>No Child Items</p>
+					</div>
+				  </div>
+
+				</div>
+			</div>
+		</div>
+
+
+		<div id="view_findings" class="box content" style="display: none">
+		<!--////VueBinding////-->
+			<div id="v_view_findings">
+				<h2><!--img v-bind:class="getTypeIcon(v.config.nodeinfo)"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(v.config.nodeinfo)"></use></svg> {{v.config.nodeinfo.l}}</h2>
+				<div class="mpprojects">
+				  <div class="box">
+					<p class="subtitle">Detail</p>
+					<div class="mono">{{v.config.nodeinfo.d}}</div>
+				  </div>
+				  <div class="box">
+					<p class="subtitle">Custom Data Field</p>
+					<div class="mono">{{v.config.nodeinfo.c}}</div>
+				  </div>
+				  <div class="box">
+					<p class="subtitle">Import (Diffscan)</p>
+					<span><a class="button is-primary" @click="clickImport($event,v.config.nodeinfo.uid)">Import Tool Output</a></span>
+				  </div>
+				  <div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
+					<p class="subtitle">List of Findings</p>
+					<div v-for="(child, index) in v.config.nodeinfo.outrefs" class="mb-1">
+					<!-- TODO: allow cloning of items but need to fetch attachment body if it hasnt been populated yet -->
+					<!-- the same issue does not occur when cloning from the view or edit pane because the body has been loaded -->
+					<!-- maybe add a hasAttachmentBody field to the typeConfig?? -->
+
+						<div class="columns is-vcentered" v-if="child.ty == 'Json'">
+							<!--div class="column is-3"><span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span></div>
+							<div class="column is-4 ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</div>
+							<div class="column is-5 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div-->
+
+							<div class="column is-6"><span>
+							<span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span>
+							<span class="ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</span>
+							</span></div>
+							<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
+						</div>
+				    </div>
+
+				  </div>
+
+
+				  <div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
+					<p class="subtitle">List of Diffscans</p>
+					<div v-for="(child, index) in v.config.nodeinfo.outrefs" class="mb-1">
+					<!-- TODO: allow cloning of items but need to fetch attachment body if it hasnt been populated yet -->
+					<!-- the same issue does not occur when cloning from the view or edit pane because the body has been loaded -->
+					<!-- maybe add a hasAttachmentBody field to the typeConfig?? -->
+
+					<div class="columns is-vcentered" v-if="child.ty == 'Findings'">
+						<!--div class="column is-3"><span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span></div>
+						<div class="column is-4 ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</div>
+						<div class="column is-5 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div-->
+
+						<div class="column is-6"><span>
+						<span class="button is-info is-small drag" draggable @dragstart="startDrag($event,child.uid)">&#10021; Move</span>
+						<span class="ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</span>
+						</span></div>
+						<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
+					</div>
+					</div>
+				  </div>
+
+				<div class="box" v-if="v.config.nodeinfo.out.length > 0 && v.config.nodeinfo.outrefs.length < 1">
+					<a class="button is-info" @click="loadChildren(v.config.nodeinfo.uid)">Show Child Items</a>
+				</div>
+				<div class="box" v-if="v.config.nodeinfo.out.length < 1">
+					<p>No Child Items</p>
+				</div>
+
+				</div>
+			</div>
+		</div>
+
+	 
+		<div id="view_textbody" class="box content is-small" style="display: none">
+		<!--////VueBinding////-->
+			<div id="v_view_textbody">
+				<h2>{{v.config.nodeinfo.l}}</h2>
+				  <div class="tooloutput"><div class="mono">{{v.config.nodeinfo.x}}</div></div>
+				
+			</div>
+		</div>
+
+		<div id="view_json"  class="box content is-small" style="display: none">
+			<div id="v_view_json">
+				<h2>{{v.config.nodeinfo.l}}</h2>
+			</div>
+			 <div id="json_viewer"  class="tooloutput"></div>
+		</div>
+		<!--div id="view_json" style="display: none"></div-->
+
+		<div id="view_editor" style="display: none">
+			<div class="columns is-vcentered">				
+				<div class="column">
+				  <div class="field">
+					<p class="control">
+					  <input id="editor_title" class="input titleedit" type="text" placeholder="Enter a Note Title">
+					</p>
+				  </div>
+				</div>
+				<div class="column is-one-third has-text-left">
+				  <span><a class="button is-primary" id="toggleEditing" onclick="toggleQuill()">Edit</a></span>
+				  <span><div class="button drag is-success" id="v_all_editor" draggable @dragstart="startDrag($event)">Clone</div></span>
+				</div>	
+			</div>						
+			<div id="editor" style="height: 65vh;"></div> 
+		</div>
+
+	 
+		<div id="view_codeedit" style="display: none">
+			<div class="columns is-vcentered">				
+				<div id="v_codeedit_title" class="column">
+					  <h1>{{v.config.nodeinfo.l}}</h1>
+				</div>
+				<div class="column is-one-quarter has-text-left">
+				  <span><a class="button is-primary" id="toggleCodeEdit" onclick="toggleCodeEdit()">Edit</a></span>
+				</div>	
+			</div>	
+			<div id="codeedit_js" style="display: none;">
+				<!--script src="hljs/languages/python.min.js"></script-->
+			</div> 			
+			<div id="codeedit"><pre class="xhljs"><code id="codeedit_code"></code></pre></div> 
+			
+			<div id="codeedit_popup" style="display: none;">
+			  <textarea id="codeedit_popup_input"></textarea><br>
+			  <button onclick="codeedit_clickOK()">OK</button>
+			  <button onclick="codeedit_clickcancel()">Cancel</button>
+			  <button onclick="codeedit_clickdel()">Delete</button>
+			</div>
+		</div>
+	 
+	 
+		<div id="view_table" style="display: none">
+				  <div class="columns is-vcentered">				
+					<div class="column">
+					  <div class="field">
+						<p class="control">
+						  <input id="table_title" class="input titleedit" type="text" placeholder="Enter a Note Title">
+						</p>
+					  </div>
+					</div>
+					
+					<div class="column is-one-third has-text-left">
+					  <span><a class="button is-primary" id="toggleEditingTable" onclick="toggleJexcel()">Edit</a></span>
+					  <span><div class="button drag is-success" id="v_all_table" draggable @dragstart="startDrag($event)">Clone</div></span>
+					</div>
+							
+				  </div>
+		
+			<div id="jexcel"></div> 
+		</div>	 
+	 
+		<div id="edit_task" style="display: none">
+		<!--////VueBinding////-->
+		 <div id="v_edit_task">
+			<h1 class="title">Edit Task</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Label</label><div class="control"><input class="input" type="text" placeholder="Short Name" v-model="v.config.nodeinfo.l" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Short Description</label><div class="control"><input class="input is-success" type="text" placeholder="Description" v-model="v.config.nodeinfo.d" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Task Metadata (JSON)</label><div class="control"><textarea class="textarea" placeholder="notes area" v-model="v.config.nodeinfo.c" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Task Data (JSON)</label><div class="control"><textarea class="textarea" placeholder="text data" v-model="v.config.nodeinfo.x" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field is-grouped">
+				  <div class="control"><button class="button is-link" @click="vSubmit()">Save</button></div>
+				  <div class="control"><button class="button is-link is-light" @click="vCancel()">Cancel</button></div>
+				</div>
+				
+			  </div>
+			</div>
+		 </div>
+		</div><!-- end main_pane -->	 
+	 
+		<div id="edit_testform" style="display: none">
+		<!--////VueBinding////-->
+		 <div id="v_testform">
+			<h1 class="title">Edit {{getTypeName(v.config.nodeinfo.uid)}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Label</label><div class="control"><input class="input" type="text" placeholder="Short Name" v-model="v.config.nodeinfo.l" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Short Description</label><div class="control"><input class="input is-success" type="text" placeholder="Description" v-model="v.config.nodeinfo.d" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Custom Data Field</label><div class="control"><textarea class="textarea" placeholder="notes area" v-model="v.config.nodeinfo.c" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Text Data Field</label><div class="control"><textarea class="textarea" placeholder="text data" v-model="v.config.nodeinfo.x" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field is-grouped">
+				  <div class="control"><button class="button is-link" @click="vSubmit()">Save</button></div>
+				  <div class="control"><button class="button is-link is-light" @click="vCancel()">Cancel</button></div>
+				</div>
+				
+			  </div>
+			</div>
+		 </div>
+		</div><!-- end main_pane -->
+	 
+	 
+		<div id="edit_default" style="display: none">
+		<!--////VueBinding////-->
+		 <div id="v_edit_default">
+			<h1 class="title">Edit {{getTypeName(v.config.nodeinfo.uid)}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Label</label><div class="control"><input class="input" type="text" placeholder="Short Name" v-model="v.config.nodeinfo.l" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Short Description</label><div class="control"><input class="input is-success" type="text" placeholder="Description" v-model="v.config.nodeinfo.d" @change="vChanged()"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Custom Data Field</label><div class="control"><textarea class="textarea" placeholder="notes area" v-model="v.config.nodeinfo.c" @change="vChanged()"></textarea></div>
+				</div>
+
+				<div class="field is-grouped">
+				  <div class="control"><button class="button is-link" @click="vSubmit()">Save</button></div>
+				  <div class="control"><button class="button is-link is-light" @click="vCancel()">Cancel</button></div>
+				</div>
+				
+			  </div>
+			</div>
+		 </div>
+		</div><!-- end main_pane -->
+
+
+
+	 
+		<div id="view_download" class="box content is-small" style="display: none">
+		<!--////VueBinding////-->
+			<div id="v_view_download">
+				<h2>File: {{v.config.nodeinfo.l}}</h2>
+				<div class="tooloutput">
+					<div v-if="v.config.nodeinfo.d.startsWith('image/')">
+					<!--img :src="v.config.signedurl" id="imgview" class="ptr" @click="vOpenNewWindow(v.config.nodeinfo.uid)"-->
+					<img :src="vGetImgDataURI()" id="imgview" class="ptr" @click="vOpenImageNewWindow(v.config.nodeinfo.uid)">
+					</div>
+					<div v-else>
+					<h3>Download</h3>
+					<p>
+					<span class="ptr" @click="vOpenNewWindow(v.config.nodeinfo.uid)">
+					<!--img class="ico-file2"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-file2"></use></svg><br>
+					{{v.config.nodeinfo.l}}</span>
+					<br>({{v.config.nodeinfo.d}})
+					</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	 
+		<div id="view_image" class="box content is-small" style="display: none">
+		<!--////VueBinding////-->
+			<div id="v_view_image">
+				<h2>{{v.config.nodeinfo.l}}</h2>
+				<div class="tooloutput">
+					<div v-if="v.config.nodeinfo.d.startsWith('image/')">
+					<img :src="'/admin/api/download/'+v.config.nodeinfo.uid" id="imgview" class="ptr" onclick="toggleImgFullscreen()">
+					</div>
+					<div v-else>
+					<h3>Download</h3>
+					<p>
+					<a :href="'/admin/api/download/'+v.config.nodeinfo.uid">
+					<!--img class="ico-file2"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-file2"></use></svg><br>
+					{{v.config.nodeinfo.l}}</a>
+					<br>({{v.config.nodeinfo.d}})
+					</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		
+		
+    </div><!--end right_pane-->
+
+  </div>
+</div>
+
+
+
+
+
+<div id="graph_layout"></div>
+
+<!--footer-->
+<nav id="bottomnavbar" class="level box p-1">
+
+  <!-- Left side -->
+  <div id="v_bottom_bar" class="level-left ml-3">
+    <div class="level-item mr-1">
+		
+    </div>
+    <div class="level-item">
+      <p class="subtitle is-7 ptr" onClick="">
+        <strong>{{v.node.uid}}</strong>
+      </p>
+    </div>
+    <div class="level-item">
+    </div>
+  </div>
+
+  <!-- Right side -->
+  <div id="v_bottomnav" class="level-right">
+    <p class="level-item"><strong></strong></p>
+  </div>
+
+</nav>
+
+
+
+
+
+
+</div><!--body_container-->
+
+
+<!--Modal Display-->
+<div id="modal_div" class="modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+
+
+    <!--div for modal pane-->
+	<div id="add_generator" style="display: none">
+	 <div id="v_add_generator"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Generator Options</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+
+
+		<section class="modal-card-body">
+
+			<div class="field">
+			  <label class="label">Custom Data Field (JSON)</label><div class="control"><textarea class="textarea" placeholder="Generator Params JSON" v-model="v.config.params"></textarea></div>
+			</div>
+
+
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Upload File</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->
+
+
+    <!--div for modal pane-->
+	<div id="import_fileupload" style="display: none">
+	 <div id="v_import_fileupload"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Import Tool Output</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+
+
+		<section class="modal-card-body">
+			<div class="field">
+			  <label class="label">Select Tool Importer</label>
+			  <div class="control">
+				<select class="input" v-model="v.config.importer">
+				  <option v-for="option in options" :value="option">
+					{{ option }}
+				  </option>
+				</select>
+			  </div>
+			</div>
+
+			<div class="file has-name">
+			  <label class="file-label">
+				<input class="file-input" type="file" id="import_file" @change="vUpdateFileName()" name="upload">
+				<span class="file-cta">
+				  <span class="file-icon">
+					<!--img class="ico-upload"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-upload"></use></svg>
+				  </span>
+				  <span class="file-label">
+					Choose a file…
+				  </span>
+				</span>
+				<span class="file-name" id="import_file_name">
+				  {{filename}}
+				</span>
+			  </label>
+			</div>
+
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Upload File</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->
+
+
+    <!--div for modal pane-->
+	<div id="add_fileupload" style="display: none">
+	 <div id="v_add_fileupload"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Upload a File Attachment</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+		<section class="modal-card-body">
+			<div class="file has-name">
+			  <label class="file-label">
+				<input class="file-input" type="file" id="at_file" @change="vUpdateFileName()" name="upload">
+				<span class="file-cta">
+				  <span class="file-icon">
+					<!--img class="ico-upload"--><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use href="#ico-upload"></use></svg>
+				  </span>
+				  <span class="file-label">
+					Choose a file…
+				  </span>
+				</span>
+				<span class="file-name" id="at_file_name">
+				  {{filename}}
+				</span>
+			  </label>
+			</div>
+
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Upload File</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->
+
+
+
+
+    <!--div for modal pane-->
+	<div id="add_default" style="display: block">
+	 <div id="v_add_default"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Add New {{v.config.nodeinfo.ty}}</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+		<section class="modal-card-body">
+	  		<h1 class="title">{{v.config.title}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">{{v.config.nodeinfo.ty}} Label</label><div class="control"><input class="input" type="text" placeholder="Client Short Name" v-model="v.config.nodeinfo.l"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Short Description</label><div class="control"><input class="input is-success" type="text" placeholder="Client Full Name or Description" v-model="v.config.nodeinfo.d"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Custom Data Field</label><div class="control"><textarea class="textarea" placeholder="Client notes area" v-model="v.config.nodeinfo.c"></textarea></div>
+				</div>
+
+			  </div>
+			</div>
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Add {{v.config.nodeinfo.ty}}</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->	
+
+
+
+
+    <!--div for modal pane-->
+	<div id="add_editor" style="display: block">
+	 <div id="v_add_editor"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Enter a Title for New Note</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+		<section class="modal-card-body">
+	  		<h1 class="title">{{v.config.title}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Note Name</label><div class="control"><input class="input" type="text" placeholder="Client Short Name" v-model="v.config.nodeinfo.l"></div>
+				</div>
+				
+			  </div>
+			</div>
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Create Note</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->	
+
+
+
+    <!--div for modal pane-->
+	<div id="add_table" style="display: block">
+	 <div id="v_add_table"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Enter a Title for New Table</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+		<section class="modal-card-body">
+	  		<h1 class="title">{{v.config.title}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Table Name</label><div class="control"><input class="input" type="text" placeholder="Client Short Name" v-model="v.config.nodeinfo.l"></div>
+				</div>
+				
+			  </div>
+			</div>
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Create Table</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->	
+
+
+
+    <!--div for modal pane-->
+	<div id="add_task" style="display: block">
+	 <div id="v_add_task"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Enter a Title for New Task</p>
+		  <button class="delete" onclick="toggleModal()" aria-label="close"></button>
+		</header>
+
+		<section class="modal-card-body">
+	  		<h1 class="title">{{v.config.title}}</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			  
+				<div class="field">
+				  <label class="label">Task Name</label><div class="control"><input class="input" type="text" placeholder="Client Short Name" v-model="v.config.nodeinfo.l"></div>
+				</div>
+				
+			  </div>
+			</div>
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Create Task</button>
+		  <button class="button" onclick="toggleModal()">Cancel</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->	
+	
+  <button onclick="toggleModal()" class="modal-close is-large" aria-label="close"></button>
+ </div>
+</div><!--end modal div-->	
+
+
+
+<!--Modal Display-->
+<div id="modal_div_login" class="modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <!--div for modal pane-->
+	<div id="loginform" style="display: block">
+	 <div id="v_loginform"><!--bind Vue to this div-->
+		<header class="modal-card-head">
+		  <p id="modal_title" class="modal-card-title">Login</p>
+		</header>
+
+		<section class="modal-card-body">
+	  		<h1 class="title">Login to Secquiry</h1>
+			<div class="tooloutput">
+			  <div class="pr-3">
+			    <div v-if="other.message.length > 0" class=""><p style="color:red;">{{other.message}}</p></div>
+				<div class="field">
+				  <label class="label">Username</label><div class="control"><input class="input" type="text" placeholder="someone@example.org" v-model="v.username"></div>
+				</div>
+
+				<div class="field">
+				  <label class="label">Password</label><div class="control"><input class="input is-success" type="password" v-model="v.password" @keyup.enter="vSubmit"></div>
+				</div>
+
+			  </div>
+			</div>
+		</section>
+		
+		<footer class="modal-card-foot">
+		  <button class="button is-success" @click="vSubmit()">Login</button>
+		</footer>
+	 </div>
+    </div><!--end modal pane-->	
+ </div>
+</div><!--end modal div-->	
+
+
+<div id="testdiv" style="background-color: green; width: 50%; height: 50%; position: absolute; top: 100px; left: 100px; display: none">
+test
+</div>
+<!-- Include the JS libraries -->
+<script src="/quill.min.js"></script>
+<script src="/vue.min.js"></script>
+<script src="/jexcel.js"></script>
+<script src="/jsuites.js"></script>
+
+<script src="/hljs/highlight.js"></script>
+<script src="/highlightjs-line-numbers.js"></script>
+
+<script src="/jsonviewer/json-viewer.js"></script>
+
+<script src="secquiry-quill.js"></script>
+<script src="secquiry-jexcel.js"></script>
+<script src="secquiry-codeedit.js"></script>
+<script src="secquiry-jsonviewer.js"></script>
+<script src="secquiry.js"></script>
+
+</body></html>

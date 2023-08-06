@@ -95,7 +95,10 @@ async def check_auth(request: Request, call_next):
             return returnStatus("400")
 
         try:
-            request.state.user_uid = authhelpers.get_uid_if_loggedin(auth_hdr)
+            usrdata = authhelpers.get_usrdata_if_loggedin(auth_hdr)
+            if not usrdata.get(authhelpers.ADMIN_FIELD):
+                return returnStatus("403")
+            request.state.usrdata = usrdata
         except Exception as e:
             return returnStatus("401")
 
@@ -104,7 +107,7 @@ async def check_auth(request: Request, call_next):
 
 @app.get("/tmpauthcookie")
 def get_tmpauth(request: Request):
-    user_uid = request.state.user_uid
+    user_uid = request.state.usrdata.get('uid')
     response = Response()
     response.set_cookie(
         "Authorization", 
@@ -218,14 +221,6 @@ async def get_attachment(attachment_uid: str, timestamp: str, request: Request):
         depth = 0, 
         body = True)
 
-'''
-curl -v -H 'content-type: application/json' -d '{"username":"test1","password":"test1"}' http://10.3.3.83/webservice/test/create_user_n9rqghns7d
-'''
-@app.post("/test/create_user_n9rqghns7d")
-async def post_create_user_n9rqghns7d(request: Request):
-    createuserdata = await request.json()
-    responseUids = authhelpers.test_create_user(createuserdata)
-    return responseUids
 
 @app.get("/test/checklogin")
 async def do_testchecklogin():

@@ -789,10 +789,10 @@ function switchPane(paneType, paneName)
 
 // login/auth ------------------------------------------------------------
 
-const loginURLs = {"oidc_aws":"/api/login/sso/oidc_aws","default":"/api/login/default"}
+const loginURLs = {"oidc_aws":"/admin/api/login/sso/oidc_aws","default":"/admin/api/login/default"}
 var sso_login = '';
 async function loadSSOLoginType() {
-        await fetch('/api/ssoconfig')
+        await fetch('/admin/api/ssoconfig')
         .then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
         .then(rdata => {
                 if(rdata && rdata['sso'] && rdata['sso'].length > 0)
@@ -803,7 +803,7 @@ async function loadSSOLoginType() {
         .catch(err => console.log(err) );
 }
 
-const BEARERTOKEN = 'bearerToken';
+const BEARERTOKEN = 'bearerToken_admin';
 function getBearerToken() {
         return localStorage.getItem(BEARERTOKEN);
 }
@@ -996,7 +996,7 @@ function convertIPtoNum(ipstr) {
 async function upsertGeneric(node)
 {	
 	showLoading(true);
-	await fetch('/api/upsert',{
+	await fetch('/admin/api/upsert',{
 		method: 'POST',
 		headers: {
 			'Authorization': getBearerTokenHeader(),
@@ -1039,7 +1039,7 @@ async function fileupload(node)
 	data.append('type', 'file_upload');
 	data.append('_p', JSON.stringify(params));
 
-	await fetch('/api/upload', {
+	await fetch('/admin/api/upload', {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1077,7 +1077,7 @@ async function importupload(importer,uid, diffscan=false)
 	data.append('type', 'file_upload');
 	data.append('metadata', JSON.stringify(params));
 
-	await fetch('/api/import/'+importer, {
+	await fetch('/admin/api/import/'+importer, {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1112,7 +1112,7 @@ async function generate(generator,serialized_params, uid)
 	
 	let data = JSON.stringify(params);
 
-	await fetch('/api/generate/'+generator, {
+	await fetch('/admin/api/generate/'+generator, {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		//!!important: don't set the content-type
@@ -1147,7 +1147,7 @@ async function moveNodeToNewParent(node, newParentNode)
 	}
 	showLoading(true);
 
-	await fetch('/api/move',{
+	await fetch('/admin/api/move',{
 		method: 'POST',
 		headers: {
 			'Authorization': getBearerTokenHeader(),
@@ -1257,7 +1257,7 @@ async function fetchNodes(_uids, _field = PROP_LASTMOD, _op = 'gt', _val = _last
 	let serverResp = {};
 	showLoading(true);
 
-	await fetch('/api/nodes', {
+	await fetch('/admin/api/nodes', {
 		method: 'POST',
 		//mode: 'no-cors', //for testing with httpbin
 		headers: {
@@ -1395,7 +1395,7 @@ async function updateAttachmentNodeIfChangedOrEmpty(node,datafield = PROP_TEXTDA
 	if(node.hasChanged || !node[datafield])
 	{
 		showLoading(true);
-		await fetch('/api/attachment/'+node[PROP_UID]+'/0',{headers:{'Authorization': getBearerTokenHeader()}})
+		await fetch('/admin/api/attachment/'+node[PROP_UID]+'/0',{headers:{'Authorization': getBearerTokenHeader()}})
 		.then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
 		.then(data => { 
 			updateNodeTree(data);
@@ -1413,7 +1413,7 @@ async function getSignedDownloadUrl(attachmentUid) {
 
 	let queryString = '?';
 
-	await fetch('/api/tmpauthcookie',{headers:{'Authorization': getBearerTokenHeader()}})
+	await fetch('/admin/api/tmpauthcookie',{headers:{'Authorization': getBearerTokenHeader()}})
 	.then(response => { if(!response.ok) { throw new Error(response.status); } })
 
 	/*
@@ -1432,7 +1432,7 @@ async function getSignedDownloadUrl(attachmentUid) {
 	})*/
 	.catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
 
-	return '/api/download/'+attachmentUid; //+queryString;
+	return '/admin/api/download/'+attachmentUid; //+queryString;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

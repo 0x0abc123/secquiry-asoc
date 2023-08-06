@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     client = cclient.client
     passwdhash = authhelpers.hash_password(pass2)
-    cdata = json.dumps({authhelpers.PASSWD_FIELD:passwdhash, authhelpers.SSO_FIELD:False})
+    cdata = json.dumps({authhelpers.PASSWD_FIELD:passwdhash, authhelpers.SSO_FIELD:False, authhelpers.ADMIN_FIELD:True})
 
     jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = ADMIN_ACCOUNT_NAME, ntype = cnode.TYPE_USER)
     if 'nodes' in jsonResponse and len(jsonResponse['nodes']) > 0:

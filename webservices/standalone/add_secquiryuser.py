@@ -14,12 +14,23 @@ import authhelpers
 if __name__ == '__main__':
     collablio_host_url = appconfig.getValue('collablio_url')
     
+    is_admin = False
     is_sso = False
     pass2 = None
 
     print(f'This will create a user account or reset its password')
     
     username = input("Enter username: ")
+
+    while True:
+        admin = input("Is Admin? (y/n): ")
+        if admin.lower() == "y":
+            is_admin = True
+        elif admin.lower() == "n":
+            is_admin = False
+        else:
+            continue
+        break
 
     while True:
         sso = input("Single Sign On user? (y/n): ")
@@ -43,7 +54,7 @@ if __name__ == '__main__':
 
     client = cclient.client
     passwdhash = authhelpers.hash_password(pass2)
-    cdata = json.dumps({authhelpers.PASSWD_FIELD:passwdhash, authhelpers.SSO_FIELD:is_sso})
+    cdata = json.dumps({authhelpers.PASSWD_FIELD:passwdhash, authhelpers.SSO_FIELD:is_sso, authhelpers.ADMIN_FIELD:is_admin})
 
     jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = username, ntype = cnode.TYPE_USER)
     if 'nodes' in jsonResponse and len(jsonResponse['nodes']) > 0:

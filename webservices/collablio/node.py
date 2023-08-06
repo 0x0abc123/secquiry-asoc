@@ -48,6 +48,8 @@ class Node:
         self.Detail = ''
         self.CustomData = ''
         self.TextData = ''
+        self.OutLinks = []
+        self.InLinkUids = []  # list of UIDs, whereas self.OutLinks is a list of Node instances
 
     def populateFromDict(self, apiFormatNode):
 
@@ -56,6 +58,8 @@ class Node:
         #    self.Children = [n[PROP_UID] for n in apiFormatNode[PROP_CHILDLIST]]
         if PROP_PARENTLIST in apiFormatNode:
             self.ParentUids = [n[PROP_UID] for n in apiFormatNode[PROP_PARENTLIST]]
+        if PROP_INLINKLIST in apiFormatNode:
+            self.InLinkUids = [n[PROP_UID] for n in apiFormatNode[PROP_INLINKLIST]]
         self.UID = apiFormatNode[PROP_UID]
         self.Label = apiFormatNode[PROP_LABEL]
         self.Detail = apiFormatNode[PROP_DETAIL]
@@ -73,6 +77,9 @@ class Node:
         #only need to specify the parent UID for the node if it doesn't have a UID yet (i.e. creating a new node)
         apiFormatNode[PROP_PARENTLIST] = [{PROP_UID : self.ParentUids[0]}] if (len(self.ParentUids) > 0) else []
         apiFormatNode[PROP_CHILDLIST] = [{PROP_UID : child.UID} for child in self.Children]
+        #only need to specify the inlink UID for the node if it doesn't have a UID yet (i.e. creating a new node)
+        apiFormatNode[PROP_INLINKLIST] = [{PROP_UID : link} for link in self.InLinkUids]
+        apiFormatNode[PROP_CHILDLIST] = [{PROP_UID : link.UID} for link in self.OutLinks]
         return apiFormatNode
         
 def recursiveConvertNodesToAPIFormat(node, listToAddTheNodeTo):
