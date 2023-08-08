@@ -81,7 +81,7 @@ def login_oidc_aws(reqdata):
     issuer = appconfig.getValue("oidc_iss")
     if issuer != None and jwtclaims['iss'] == issuer:
         if int(jwtclaims['exp']) > int(time.time()):
-            authtoken = login_default({"user":getUserFromJWTClaims(jwtclaims)},True)
+            authtoken = login_default({"username":getUserFromJWTClaims(jwtclaims)},True)
             return authtoken
         else:
             logger.logEvent(f'authhelper: expired token')
@@ -124,8 +124,9 @@ def login_default(logindata, ssologin=False):
         usrdata_json = usernodeReturned[cnode.PROP_CUSTOM]
         usrdata = json.loads(usrdata_json)
         if (ssologin and usrdata.get(SSO_FIELD)) or verify_password(logindata['password'], usrdata[PASSWD_FIELD]):            
+            if PASSWD_FIELD in usrdata:
+                del usrdata[PASSWD_FIELD]
             user_uid = usernodeReturned[cnode.PROP_UID]
-            del usrdata[PASSWD_FIELD]
             usrdata['uid'] = user_uid
             usrdata[AESGCMSECRETS_FIELD] = cryptohelpers.generateAESGCMSecrets()
             loggedin_users[user_uid] = usrdata
