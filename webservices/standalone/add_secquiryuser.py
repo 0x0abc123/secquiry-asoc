@@ -50,10 +50,9 @@ if __name__ == '__main__':
                 break
             else:
                 print('[!] Passwords did not match')
-        
 
     client = cclient.client
-    passwdhash = authhelpers.hash_password(pass2)
+    passwdhash = authhelpers.hash_password(pass2) if not is_sso else 'sso'
     cdata = json.dumps({authhelpers.PASSWD_FIELD:passwdhash, authhelpers.SSO_FIELD:is_sso, authhelpers.ADMIN_FIELD:is_admin})
 
     jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = username, ntype = cnode.TYPE_USER)
