@@ -126,11 +126,6 @@ def get_tmpauth(request: Request):
 async def run_import(importer_name: str, file: UploadFile, request: Request, metadata: str = Form()):
     if importer_name not in Importers:
         raise HTTPException(status_code=404, detail=f"unknown importer {importer_name}")
-    '''
-    - parse metadata
-    - importer = Importers[importer_name]
-    - importer.do_import(file, metadata)
-    '''
     metadata_json = json.loads(metadata)
     importer = Importers[importer_name]
     import_result = await importer.do_import(file, metadata_json)
@@ -141,11 +136,6 @@ async def run_import(importer_name: str, file: UploadFile, request: Request, met
 async def run_generate(generator_name: str, request: Request):
     if generator_name not in Generators:
         raise HTTPException(status_code=404, detail=f"unknown generator {generator_name}")
-    '''
-    - parse metadata
-    - importer = Importers[importer_name]
-    - importer.do_import(file, metadata)
-    '''
     metadata_dict = await request.json()
     generator = Generators[generator_name]
     generator_result = await generator.generate(metadata_dict)
@@ -191,11 +181,11 @@ async def api_upsertpost(request: Request):
     return client.upsertNodesPostObj(nodesdata)
 
 @app.post("/upload")
-def api_uploadfile(filedata: UploadFile, _p: str = Form()): #_p: Annotated[str, Form()],):
+def api_uploadfile(filedata: UploadFile, p: str = Form()):
     form = cclient.MultiPartForm()
     form.add_field('type', 'file_upload')
-    form.add_field('_p', _p)
-    form.add_file('filedata', filedata.filename, fileHandle=filedata.file) #open(filedata, "rb"))
+    form.add_field('_p', p)
+    form.add_file('filedata', filedata.filename, fileHandle=filedata.file)
     return client.createFileNode(form)
 
 
@@ -228,44 +218,3 @@ async def do_testchecklogin():
     return {"check":"ok"}
 
 
-'''
-await request.json()
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@app.get("/foobar")
-async def foobar():
-    return {"message": "Hello Foobar"}
-
-@app.get("/number/{id}")
-async def foobar(id: int):
-    return {"message": f"Hello int {id}"}
-
-
-# The query is the set of key-value pairs that go after the ? in a URL, separated by & characters.
-# For example, in the URL:
-# http://127.0.0.1:8000/items/?skip=0&limit=10
-
-fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
-@app.get("/items/")
-async def read_item(skip: int = 0, limit: int = 2, msg: str = 'nil'):
-    print(f"msg: {msg}")
-    return fake_items_db[skip : skip + limit]
-
-# curl -kv -H 'x-value: laefjejflfk' https://10.3.3.83/webservice/headertest
-@app.get("/headertest")
-async def headertest(x_value: str = Header(default='x')):
-    return {"message": f"x_value: {x_value}"}
-
-
-@app.get("/headertest2", dependencies=[Depends(auth_check)])
-async def headertest2():
-    return {"message": "OK"}
-
-# curl -kv -X POST  -F 'file=@test.js' -F 'metadata={"a":"123"}' https://10.3.3.83/webservice/uploadfile/xuhdh
-@app.post("/uploadfile/{testparam}")
-async def create_upload_file(testparam: str, file: UploadFile, metadata: str = Form()):
-    return {"testparam": testparam, "filename": file.filename, "metadata": json.loads(metadata)}
-'''

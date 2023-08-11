@@ -143,7 +143,9 @@ def create_jwt(sub, for_uid):
         payload=payload_data,
         key=JWT_SECRET_KEY,
         algorithm=JWT_ALG
-    ).decode('utf-8')
+    )
+    if type(token) is bytes:
+        return token.decode('utf-8')
     return token
 
 

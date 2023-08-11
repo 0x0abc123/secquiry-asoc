@@ -1037,7 +1037,7 @@ async function fileupload(node)
 	let data = new FormData();
 	data.append('filedata', input.files[0]);
 	data.append('type', 'file_upload');
-	data.append('_p', JSON.stringify(params));
+	data.append('p', JSON.stringify(params));
 
 	await fetch('/admin/api/upload', {
 		method: 'POST',
