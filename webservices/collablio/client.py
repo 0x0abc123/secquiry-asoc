@@ -5,7 +5,9 @@ import datetime
 import sys
 import uuid
 import urllib.request
+import urllib.error
 import urllib.parse
+import time
 from shutil import copyfileobj
 import json
 import traceback
@@ -40,19 +42,23 @@ class Client:
         return self.auth_token_hdr_val
 
     def executeHttpRequest(self, request):
-        '''
-        authreq = urllib.request.Request('http://127.0.0.1:5001/service/gettemptoken', data='null'.encode('utf8'), headers={'content-type': 'application/json'})
-        response = urllib.request.urlopen(authreq)
-        jsonResponse =  json.loads(response.read().decode('utf8'))
-        if 'token' not in jsonResponse:
-            #raise Exception()
-            jsonResponse = {'token':''}
-        '''
-        if self.user != '' and self.passwd != '':
-            self.getAuthToken()
-        request.headers['Authorization'] = f'Bearer {self.auth_token_hdr_val}'   #jsonResponse['token']
-        return urllib.request.urlopen(request)
-
+        retries = 3
+        while retries > 0:
+            if self.user != '' and self.passwd != '':
+                self.getAuthToken()
+            request.headers['Authorization'] = f'Bearer {self.auth_token_hdr_val}'
+            try:
+                response = urllib.request.urlopen(request)
+                return response
+            except urllib.error.HTTPError as error:
+                if error.code > 400:
+                    time.sleep(1)
+                    self.auth_token_hdr_val = None
+                    retries -= 1
+                    continue
+                return None
+        return None
+        
     def fetchNodesRequest(self, querystring):
         req = urllib.request.Request(self.host_url+"/nodes"+querystring)
         response = self.executeHttpRequest(req)
