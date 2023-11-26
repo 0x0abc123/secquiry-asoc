@@ -58,50 +58,23 @@ client = cclient.client
 # or see individual path dependencies with /headertest2 endpoint
 #app = FastAPI(dependencies=[Depends(auth_check)])
 
-ALLOWLIST_ROUTEPREFIXES = [
+
+ANONYMOUS_ROUTE_PREFIXES = [
    "ssoconfig",
    "login",
    "debug"
 ]
 
-def returnStatus(statuscode):
-    lookup = {
-        "400": status.HTTP_400_BAD_REQUEST,
-        "401": status.HTTP_401_UNAUTHORIZED,
-        "403": status.HTTP_403_FORBIDDEN,
-        "404": status.HTTP_404_NOT_FOUND
-    }
-    response = Response()
-    response.status_code = lookup[statuscode]
-    return response
+def checkIfAdmin(request, usrdata):
+    return usrdata.get(authhelpers.ADMIN_FIELD)
 
-"""
-you can use request.state.your_custom_param  to pass data on to the route handlers from the middleware
-https://stackoverflow.com/questions/64602770/how-can-i-set-attribute-to-request-object-in-fastapi-from-middleware
-"""
+authMiddleware = authhelpers.AuthMiddleware(anonymousRoutePrefixes=ANONYMOUS_ROUTE_PREFIXES, otherConditions=checkIfAdmin)
+
 @app.middleware("http")
 async def check_auth(request: Request, call_next):
-    p = request.url.path
-    prefix = p.split("/")[1]
-    if prefix not in ALLOWLIST_ROUTEPREFIXES:
-        auth_hdr = request.headers.get('Authorization')
-        '''remove the leading "Bearer" string'''
-        if auth_hdr:
-            parts = auth_hdr.split(' ')
-            auth_hdr = parts[1] if len(parts) > 1 else None
-        else:
-            auth_hdr = request.cookies.get('Authorization')
-        if not auth_hdr:
-            return returnStatus("400")
-
-        try:
-            usrdata = authhelpers.get_usrdata_if_loggedin(auth_hdr)
-            if not usrdata.get(authhelpers.ADMIN_FIELD):
-                return returnStatus("403")
-            request.state.usrdata = usrdata
-        except Exception as e:
-            return returnStatus("401")
-
+    response = authMiddleware.getAuthorisation(request)
+    if response:
+        return response
     response = await call_next(request)
     return response
 
@@ -170,10 +143,25 @@ async def api_nodespost(request: Request):
     nodesdata = await request.json()
     return client.fetchNodesPostObj(nodesdata)
 
+@app.post("/query")
+async def api_querypost(request: Request):
+    querydata = await request.json()
+    return client.queryPostObj(querydata)
+
 @app.post("/move")
 async def api_movepost(request: Request):
     nodesdata = await request.json()
     return client.moveNodesPostObj(nodesdata)
+
+@app.post("/link")
+async def api_linkpost(request: Request):
+    nodesdata = await request.json()
+    return client.linkNodesPostObj(nodesdata)
+
+@app.post("/unlink")
+async def api_unlinkpost(request: Request):
+    nodesdata = await request.json()
+    return client.unlinkNodesPostObj(nodesdata)
 
 @app.post("/upsert")
 async def api_upsertpost(request: Request):

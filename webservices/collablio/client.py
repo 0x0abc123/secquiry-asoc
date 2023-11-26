@@ -18,7 +18,7 @@ import mimetypes
 import secretstore
 import tempfile
 
-COLLABLIO_HOST = appconfig.getValue('collablio_url') #"http://127.0.0.1:5000"
+COLLABLIO_HOST = appconfig.getValue('collablio_url')
 
 class Client:
 
@@ -32,7 +32,16 @@ class Client:
     def setCreds(self, username, password):
         self.user = username
         self.passwd = password
-    
+
+    def LoginAndGetToken(self, username, password):
+        loginData = {'username':username,'password':password}
+        serialisedJson = json.dumps(loginData).encode('utf8')
+        req = urllib.request.Request(self.host_url+'/login', data=serialisedJson, headers={'content-type': 'application/json'})
+        response = urllib.request.urlopen(req)
+        # should return list of uids
+        responsedata = json.loads(response.read().decode('utf8'))
+        return responsedata['token']
+
     def getAuthToken(self):
         mins90 = datetime.timedelta(minutes=90)
         now = datetime.datetime.now()
@@ -58,7 +67,14 @@ class Client:
                     continue
                 return None
         return None
-        
+
+    def doPostRequest(self, endpoint, postdata):
+        req = urllib.request.Request(url=f'{self.host_url}/{endpoint}', data=bytes(json.dumps(postdata), encoding='utf-8'))
+        req.add_header('Content-Type', 'application/json')
+        response = self.executeHttpRequest(req)
+        jsonResponse =  json.loads(response.read().decode('utf8'))
+        return jsonResponse
+
     def fetchNodesRequest(self, querystring):
         req = urllib.request.Request(self.host_url+"/nodes"+querystring)
         response = self.executeHttpRequest(req)
@@ -74,35 +90,40 @@ class Client:
         return self.fetchNodesRequest(querystring)
 
     def fetchNodesPostObj(self, postdata):
-        #reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }
-        req = urllib.request.Request(url=self.host_url+'/nodes', data=bytes(json.dumps(postdata), encoding='utf-8'))
-        req.add_header('Content-Type', 'application/json')
-        response = self.executeHttpRequest(req)
-        jsonResponse =  json.loads(response.read().decode('utf8'))
-        return jsonResponse
+        return self.doPostRequest('nodes', postdata)
+
+    def queryPostObj(self, postdata):
+        return self.doPostRequest('query', postdata)
+
+    def ExecQuery(self, queryOptions):
+        serverResponse = self.queryPostObj(queryOptions)
+        nodes = serverResponse.get('nodes')
+        if nodes is None:
+            return []
+        return nodes
+
+    def ExecUpsert(self, listOfNodesToUpsert):
+        nodes = self.upsertNodesPostObj(listOfNodesToUpsert)
+        if nodes is None:
+            return []
+        return nodes
 
     def fetchNodesPost(self, uids = [], field = cnode.PROP_LASTMOD, op = 'gt', val = '0', depth = 20, typ = ''):
         reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }        
         return self.fetchNodesPostObj(reqdata)
 
     def moveNodesPostObj(self, postdata):
-        #reqdata = { 'uids': uids, 'field': field, 'op': op, 'val': val, 'depth': depth, 'type': typ }
-        req = urllib.request.Request(url=self.host_url+'/move', data=bytes(json.dumps(postdata), encoding='utf-8'))
-        req.add_header('Content-Type', 'application/json')
-        response = self.executeHttpRequest(req)
-        jsonResponse =  json.loads(response.read().decode('utf8'))
-        return jsonResponse
+        return self.doPostRequest('move', postdata)
 
+    def linkNodesPostObj(self, postdata):
+        return self.doPostRequest('link', postdata)
+
+    def unlinkNodesPostObj(self, postdata):
+        return self.doPostRequest('unlink', postdata)
 
     # nodesToUpsert is a list of collablio.node.Node
     def upsertNodesPostObj(self, nodeslist):
-        serialisedJson = json.dumps(nodeslist).encode('utf8')
-        req = urllib.request.Request(self.host_url+'/upsert', data=serialisedJson, headers={'content-type': 'application/json'})
-        #response = urllib.request.urlopen(req)
-        response = self.executeHttpRequest(req)
-        # should return list of uids
-        new_uids = json.loads(response.read().decode('utf8'))
-        return new_uids
+        return self.doPostRequest('upsert', nodeslist)
         
     def upsertNodes(self, nodesToUpsert, convertToAPIFormat = True):
         apiNodesList = [] if convertToAPIFormat else nodesToUpsert
@@ -115,7 +136,7 @@ class Client:
         # Build the request, including the byte-string
         # for the data to be posted.
         data = bytes(multipartform)
-        r = urllib.request.Request(self.host_url+api_path, data=data) #  'http://127.0.0.1:9123'
+        r = urllib.request.Request(self.host_url+api_path, data=data)
 
         r.add_header('Content-type', multipartform.get_content_type())
         r.add_header('Content-length', len(data))
@@ -125,9 +146,6 @@ class Client:
     def downloadFile(self, uid):
         req = urllib.request.Request(self.host_url+"/authddownload/"+uid)
         response = self.executeHttpRequest(req)
-        #print(response.headers)
-        #jsonResponse =  json.loads(response.read().decode('utf8'))
-        #out_file = tempfile.SpooledTemporaryFile(max_size=1048576)
         filename = uid
         cdisp = response.headers.get("Content-Disposition")
         if cdisp is not None:
@@ -137,15 +155,6 @@ class Client:
         copyfileobj(response, out_file)
         out_file.close()
         return (tmpfilepath, response.headers.get('content-type'), cdisp)
-
-    def LoginAndGetToken(self, username, password):
-        loginData = {'username':username,'password':password}
-        serialisedJson = json.dumps(loginData).encode('utf8')
-        req = urllib.request.Request(self.host_url+'/login', data=serialisedJson, headers={'content-type': 'application/json'})
-        response = urllib.request.urlopen(req)
-        # should return list of uids
-        responsedata = json.loads(response.read().decode('utf8'))
-        return responsedata['token']
         
 class MultiPartForm:
     """Accumulate the data to be used when posting a form."""

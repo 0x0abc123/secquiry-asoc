@@ -12,19 +12,22 @@ var j = jexcel(document.getElementById('jexcel'), {
 );
 
 var j_isEnabled = false;
-function toggleJexcel()
+async function toggleJexcel()
 {
-	if(j_isEnabled)
-		_panesIndex['edit']['table'].onAfterSubmit();
-	else
+	if(j_isEnabled) {
+		await _panesIndex['edit']['table'].onAfterSubmit();
+	} else {
 		v_action_funcs['edit'](jexcelGlobal.CurrentUid);
-	j_isEnabled = !j_isEnabled;
+	}
 }
+
+function disableJexcel() { j_isEnabled = false; setJexcelVisualState('disable'); }
+function enableJexcel() { j_isEnabled = true; setJexcelVisualState('enable'); }
 
 function setJexcelReadonly(readonly = true)
 {
 	let jconf = j.getConfig();
-	jconf.columns.forEach(column => column.readOnly = readonly);
+	jconf.columns.forEach(column => { column.readOnly = readonly; column.wordWrap = true });
 	//reload to show updated state
 	j.setData(null);
 }
@@ -32,7 +35,7 @@ function setJexcelReadonly(readonly = true)
 function populateJexcel(nodeinfo)
 {
 	let serialisedData = nodeinfo[PROP_TEXTDATA] ||  '{"jsondata":null,"jsoncols":null}';
-//console.log('Jexcel serialisedData',serialisedData);
+	//console.log('Jexcel serialisedData',serialisedData);
 	let jdata = JSON.parse(serialisedData);
 	let rowdata = JSON.parse(jdata.jsondata) || j_initial_data;
 	let coldata = JSON.parse(jdata.jsoncols) || j_initial_cols;

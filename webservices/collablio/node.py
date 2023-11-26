@@ -79,7 +79,7 @@ class Node:
         apiFormatNode[PROP_CHILDLIST] = [{PROP_UID : child.UID} for child in self.Children]
         #only need to specify the inlink UID for the node if it doesn't have a UID yet (i.e. creating a new node)
         apiFormatNode[PROP_INLINKLIST] = [{PROP_UID : link} for link in self.InLinkUids]
-        apiFormatNode[PROP_CHILDLIST] = [{PROP_UID : link.UID} for link in self.OutLinks]
+        apiFormatNode[PROP_LINKLIST] = [{PROP_UID : link.UID} for link in self.OutLinks]
         return apiFormatNode
         
 def recursiveConvertNodesToAPIFormat(node, listToAddTheNodeTo):

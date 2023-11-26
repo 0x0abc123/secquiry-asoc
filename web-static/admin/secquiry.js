@@ -296,6 +296,9 @@ createTypeConfigWithDefaults(TYPE_JOBREQ, [],'ico-send',false,'default','default
 createTypeConfigWithDefaults(TYPE_CODE, [TYPE_ANNOTATION],'ico-miscfile',false,'codeedit',null,'codeedit');
 createTypeConfigWithDefaults(TYPE_TASK, [],'ico-send',false,'textbody','task','task');
 createTypeConfigWithDefaults(TYPE_AGENT, [],'ico-send',false,'default','default','testtaskagent');
+let c_user = createTypeConfigWithDefaults(TYPE_USER, [],'ico-user',false,'user','default','default');
+c_user.actionViewConf.config.adminOfClients = [];
+c_user.actionViewConf.config.canAccessProjects = [];
 createTypeConfigWithDefaults(TYPE_SERVICE, [],'ico-send',false,'default','default','default');
 createTypeConfigWithDefaults(TYPE_JSON, [TYPE_ANNOTATION],'ico-miscfile',false,'json',null,null);
 createTypeConfigWithDefaults(TYPE_MARKDOWN, [TYPE_ANNOTATION],'ico-miscfile',false,'textbody',null,null);
@@ -348,6 +351,24 @@ var _panesIndex = {
 			divID: "view_default",
 			v: { config: getDefaultConfig('view')},
 			onBeforeShow: function(){},
+		},
+		"user" : {
+			divID: "view_user",
+			v: { config: getDefaultConfig('view')},
+			onBeforeShow: async function(){
+				let conf = this.v.config;
+				let nodeInfo = conf.nodeinfo;
+				await fetchOutLinkNodes(nodeInfo[PROP_UID],[TYPE_CLIENT,TYPE_PROJECT]);
+				clearList(conf.adminOfClients);// = [];
+				clearList(conf.canAccessProjects);// = [];
+				nodeInfo[PROP_RELATIONS].forEach(rel => {
+					let node = _index[rel[PROP_UID]]
+					if(node[PROP_TYPE] == TYPE_CLIENT)
+						conf.adminOfClients.push(node);
+					else if(node[PROP_TYPE] == TYPE_PROJECT)
+						conf.canAccessProjects.push(node);
+				});
+			},
 		},
 		"findings" : {
 			divID: "view_findings",
@@ -530,7 +551,7 @@ var _panesIndex = {
 			},
 			onBeforeShow: function(){
 				populateJexcel(this.v.config.nodeinfo);
-				setJexcelVisualState("enable");
+				enableJexcel();
 				warnOnNavigateAway = true;
 			},
 			onAfterSubmit: async function(){
@@ -542,7 +563,7 @@ var _panesIndex = {
 					nodeInf[PROP_TEXTDATA] = null;
 				if(x_changed || l_changed)
 					await upsertGeneric(nodeInf);
-				setJexcelVisualState("disable");
+				disableJexcel();
 				warnOnNavigateAway = false;
 				jexcelGlobal.CurrentUid = nodeInf[PROP_UID];
 			},		
@@ -555,13 +576,11 @@ var _panesIndex = {
 				await updateAttachmentNodeIfChangedOrEmpty(this.v.config.nodeinfo);
 			},
 			onBeforeShow: function(){
-				//populateJexcel(this.v.config.nodeinfo);
-				//setJexcelVisualState("enable");
 				warnOnNavigateAway = true;
 			},
 			onAfterSubmit: async function(){
 				let nodeInf = this.v.config.nodeinfo;
-				//getJexcelEdits(nodeInf);
+
 				let x_changed = (nodeInf[PROP_TEXTDATA] != _index[nodeInf[PROP_UID]][PROP_TEXTDATA]);
 				let l_changed = (nodeInf[PROP_LABEL] != _index[nodeInf[PROP_UID]][PROP_LABEL]);
 				let c_changed = (nodeInf[PROP_CUSTOM] != _index[nodeInf[PROP_UID]][PROP_CUSTOM]);
@@ -570,9 +589,8 @@ var _panesIndex = {
 					nodeInf[PROP_TEXTDATA] = null;
 				if(x_changed || l_changed || c_changed || d_changed)
 					await upsertGeneric(nodeInf);
-				//setJexcelVisualState("disable");
+
 				warnOnNavigateAway = false;
-				//jexcelGlobal.CurrentUid = nodeInf[PROP_UID];
 			},		
 		},	},
 	//modal dialog views:
@@ -607,8 +625,8 @@ var _panesIndex = {
 			onBeforeShow: function(){},
 			onAfterSubmit: async function(){
 				let ninfo = this.v.config.nodeinfo;
-				await upsertGeneric(ninfo); 
-				v_action_funcs['edit'](ninfo[PROP_UID]);
+				let newUID = await upsertGeneric(ninfo); 
+				v_action_funcs['edit'](newUID);
 				},
 			},
 		"table" : { //we show a dialog to enter the table name, create the empty grid and show the actual editor
@@ -617,8 +635,8 @@ var _panesIndex = {
 			onBeforeShow: function(){},
 			onAfterSubmit: async function(){
 				let ninfo = this.v.config.nodeinfo;
-				await upsertGeneric(ninfo); 
-				v_action_funcs['edit'](ninfo[PROP_UID]);
+				let newUID = await upsertGeneric(ninfo); 
+				v_action_funcs['edit'](newUID);
 				},
 			},
 		"task" : { //we show a dialog to enter the table name, create the empty grid and show the actual editor
@@ -627,8 +645,8 @@ var _panesIndex = {
 			onBeforeShow: function(){},
 			onAfterSubmit: async function(){
 				let ninfo = this.v.config.nodeinfo;
-				await upsertGeneric(ninfo); 
-				v_action_funcs['edit'](ninfo[PROP_UID]);
+				let newUID = await upsertGeneric(ninfo); 
+				v_action_funcs['edit'](newUID);
 				},
 			},
 	},
@@ -875,6 +893,7 @@ function showLoading(waiting)
 {
 	let elem = document.getElementById("body_container");
 	elem.style.cursor = (waiting) ? "wait" : "auto";
+	showLoadingModal(waiting);
 	/*
 	let logo = document.getElementById("ico-logo");
 	let load = document.getElementById("ico-load");
@@ -889,6 +908,16 @@ function showLoading(waiting)
 		logo.style.display = "inline-block";
 	}
 	*/
+}
+
+function showLoadingModal(showIt)
+{
+	var loadingDivClassList = document.getElementById("modal_div_loading").classList;
+	if(!showIt && loadingDivClassList.contains('is-active'))
+		loadingDivClassList.remove('is-active');
+	else if(showIt) {
+		loadingDivClassList.add('is-active');
+	}
 }
 
 // show hide the modal dialog pane:
@@ -996,6 +1025,7 @@ function convertIPtoNum(ipstr) {
 async function upsertGeneric(node)
 {	
 	showLoading(true);
+	let upsertedUID = null;
 	await fetch('/admin/api/upsert',{
 		method: 'POST',
 		headers: {
@@ -1011,6 +1041,10 @@ async function upsertGeneric(node)
 		{
 			if(!_index[rdata[0]])
 				_index[rdata[0]] = emptyNode(rdata[0]);
+			
+			if(node[PROP_TEXTDATA])
+				_index[rdata[0]][PROP_TEXTDATA] = node[PROP_TEXTDATA];
+			upsertedUID = rdata[0];
 		}
 		else
 		{
@@ -1020,6 +1054,7 @@ async function upsertGeneric(node)
 	showLoading(false);
 
 	await refreshNodes();
+	return upsertedUID;
 }
 
 
@@ -1041,13 +1076,11 @@ async function fileupload(node)
 
 	await fetch('/admin/api/upload', {
 		method: 'POST',
-		//mode: 'no-cors', //for testing with httpbin
-		//!!important: don't set the content-type
 		headers: {
 			'Authorization': getBearerTokenHeader()
 		},
 		body: data
-	  }).then(response => { if(!response.ok) { throw new Error(response.status); }; return response.text(); })
+	  }).then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
 	  .then( response => {
 			if(response.startsWith('0x'))
 			{
@@ -1067,9 +1100,8 @@ async function importupload(importer,uid, diffscan=false)
 	const input = document.getElementById('import_file');
 
 	let params = {};
-	//if(node[PROP_UID])
 	params.under_uid = uid;
-	//params.under_uid = node[PROP_PARENTLIST][0].uid;
+
 	if (diffscan) params.diffscan = true;
 	
 	let data = new FormData();
@@ -1079,8 +1111,6 @@ async function importupload(importer,uid, diffscan=false)
 
 	await fetch('/admin/api/import/'+importer, {
 		method: 'POST',
-		//mode: 'no-cors', //for testing with httpbin
-		//!!important: don't set the content-type
 		headers: {
 			'Authorization': getBearerTokenHeader()
 		},
@@ -1104,18 +1134,15 @@ async function generate(generator,serialized_params, uid)
 {
 	showLoading(true);
 
-	let params = JSON.parse(serialized_params);//{};
-	//if(node[PROP_UID])
+	let params = JSON.parse(serialized_params) || {};
+
 	params.under_uid = uid;
 	params.generator = generator;
-	//params.under_uid = node[PROP_PARENTLIST][0].uid;
 	
 	let data = JSON.stringify(params);
 
 	await fetch('/admin/api/generate/'+generator, {
 		method: 'POST',
-		//mode: 'no-cors', //for testing with httpbin
-		//!!important: don't set the content-type
 		headers: {
 			'Authorization': getBearerTokenHeader()
 		},
@@ -1168,6 +1195,37 @@ async function moveNodeToNewParent(node, newParentNode)
 	await refreshNodes();
 }
 
+async function linkNode(srcnode, targetnode, unlink=false)
+{	
+	let linkNodeData = {
+		nodes: [srcnode[PROP_UID]],
+		incoming: [],
+		outgoing: [targetnode[PROP_UID]]
+	}
+	showLoading(true);
+
+	let url = unlink ? '/admin/api/unlink'  : '/admin/api/link';
+	await fetch(url,{
+		method: 'POST',
+		headers: {
+		  'Authorization': getBearerTokenHeader(),
+		  'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(linkNodeData)
+	})
+	.then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
+	.then(rdata => { 
+		if(rdata && rdata.error)
+		{
+			console.log("link nodes failed: ",rdata.message);
+		}
+	})
+	.catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
+	showLoading(false);
+
+	await refreshNodes();
+}
+
 // implements clone node functionality
 async function copyNodeToParent(node, newParentNode)
 {	
@@ -1176,7 +1234,8 @@ async function copyNodeToParent(node, newParentNode)
 	newCopy[PROP_PARENTLIST] = [{uid: newParentNode[PROP_UID]}];
 	newCopy[PROP_CHILDLIST] = [];
 	newCopy[PROP_UID] = '';
-	//todo: remember to nuke lnk[] too when implemented
+	//todo: remember to nuke invlnk[] too when implemented
+	newCopy[PROP_RELATIONS] = [];
 	await upsertGeneric(newCopy);
 }
 
@@ -1225,6 +1284,11 @@ async function fetchChildNodes(nodeid)
 		await fetchNodes([nodeid],PROP_LASTMOD,'gt',0,1);
 }
 
+async function fetchOutLinkNodes(nodeid, types=[])
+{
+	await fetchNodes([nodeid],PROP_LASTMOD,'gt',0, _depth=1, _recurse='lnk', _select=['lnk']);
+}
+
 
 async function refreshNodes()
 {
@@ -1250,16 +1314,31 @@ async function fetchInitialNodes()
 	await fetchChildNodes(G.root.uid,0);
 }
 
+function queryOptions(_uids, _field, _op, _val, _depth, _recurse, _select) {
+	let opts = {
+		rootIds: _uids,
+		recurse: _recurse,
+		depth: _depth,
+		select: ["l","d","c","m","in","out","ty"],
+		filters: {
+			field: _field,
+			op: _op,
+			val: String(_val)
+		}
+	};
+	if(_select)
+		extendList(opts.select, _select);
+	return opts;
+}
 // call the API to get nodes modified since the last refresh
-async function fetchNodes(_uids, _field = PROP_LASTMOD, _op = 'gt', _val = _lastUpdateTime_Server, _depth = 0)
+async function fetchNodes(_uids, _field = PROP_LASTMOD, _op = 'gt', _val = _lastUpdateTime_Server, _depth = 0, _recurse = 'out', _select = null)
 {
-	let data = { field: _field, op: _op, val: `${_val}`, depth: _depth, uids: _uids, type: '' };
+	let data = queryOptions(_uids, _field, _op, _val, _depth, _recurse, _select); 
 	let serverResp = {};
 	showLoading(true);
 
-	await fetch('/admin/api/nodes', {
+	await fetch('/admin/api/query', {
 		method: 'POST',
-		//mode: 'no-cors', //for testing with httpbin
 		headers: {
 			'Authorization': getBearerTokenHeader(),
 		  'Content-Type': 'application/json'
@@ -1336,7 +1415,7 @@ function updateNode(existingNode, updatedNode)
 	//  we don't want to create fields if they don't already exist *except* for in, out
 	//  if in or out don't exist then create empty arrays
 
-	let oldHasChangedValue = existingNode.hasChanged;
+	//let oldHasChangedValue = existingNode.hasChanged;
 	
 	existingNode.hasChanged = (updatedNode[PROP_LASTMOD] != existingNode[PROP_LASTMOD]); 
 	
@@ -1384,7 +1463,6 @@ function updateNodeTree(serverResponse)
 		createEdgesForNode(_index[nodes[i].uid]);
 
 	setLastUpdatedTime(serverResponse.timestamp);
-	//vue_col_groups.$forceUpdate();
 }
 
 // called from the onBeforeCopyNode() hook for the Note, Code and Table types
@@ -1404,7 +1482,7 @@ async function updateAttachmentNodeIfChangedOrEmpty(node,datafield = PROP_TEXTDA
 		.catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
 		showLoading(false);
 	}
-	else {console.log("att hasnt changed or already has datafield: ",node.hasChanged,node[datafield]);}
+	//else {console.log("att hasnt changed or already has datafield: ",node.hasChanged,node[datafield]);}
 }
 
 // because the /download endpoint is hyperlinked in the view for attachment download (we want a direct hyperlink to save-as or open in a new window), 
@@ -1415,24 +1493,9 @@ async function getSignedDownloadUrl(attachmentUid) {
 
 	await fetch('/admin/api/tmpauthcookie',{headers:{'Authorization': getBearerTokenHeader()}})
 	.then(response => { if(!response.ok) { throw new Error(response.status); } })
-
-	/*
-	await fetch('/api/downloadtoken/'+attachmentUid,{headers:{'Authorization': getBearerTokenHeader()}})
-	.then(response => { if(!response.ok) { throw new Error(response.status); }; return response.json(); })
-	.then(rdata => { 
-		if(rdata && rdata['sig'] && rdata['sig'].length > 0)
-		{
-			let sigEncoded = encodeURIComponent(rdata['sig']);
-			queryString += `sig=${sigEncoded}&exp=${rdata.exp}&non=${rdata.non}`;
-		}
-		else
-		{
-			throw new Error('500');
-		}
-	})*/
 	.catch(err => {console.log(err); if(err.message == '401') showLoginModal(true);});
 
-	return '/admin/api/download/'+attachmentUid; //+queryString;
+	return '/admin/api/download/'+attachmentUid;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -1594,7 +1657,6 @@ var v_action_funcs = {
 	},
 	import: async function (_uid) { 		
 		_panesIndex.add['importupload'].v.config.under_uid = _uid;
-		//_panesIndex.add['importupload'].v.config.importer = 'example';
 		_panesIndex.add['importupload'].v.config.diffscan = (_index[_uid][PROP_TYPE] == TYPE_FINDINGS)
 		await _panesIndex.add['importupload'].onBeforeShow();
 		switchPane('add','importupload');
@@ -1602,7 +1664,6 @@ var v_action_funcs = {
 	generate: async function (generator,_uid) { 		
 		_panesIndex.add['generator'].v.config.under_uid = _uid;
 		_panesIndex.add['generator'].v.config.generator = generator;
-		//_panesIndex.add['importupload'].v.config.importer = 'example';
 		await _panesIndex.add['generator'].onBeforeShow();
 		switchPane('add','generator');
 	},
@@ -1613,6 +1674,9 @@ var v_action_funcs = {
 			let conf =  tc.actionEditConf || _typeConfigs.unknown.actionEditConf;
 			_panesIndex.edit[conf.paneType].v.config = conf.config;
 			
+			// before we copy the node properties from the index to the temp copy, we need to call the onBeforeCopyNode hook
+			// this allows any custom processing before the copy is made, such as 
+			// fetching the text body from the backend if it is newer than the cached one in the index
 			if(_panesIndex.edit[conf.paneType].onBeforeCopyNode) {
 				_panesIndex.edit[conf.paneType].v.config.nodeinfo = n;
 				await _panesIndex.edit[conf.paneType].onBeforeCopyNode();
@@ -1698,7 +1762,7 @@ var v_action_funcs = {
 		let targetTC = _typeConfigs[nTarget[PROP_TYPE]];
 		if(!targetTC.typesAllowedForChildNodes.has(nSrc[PROP_TYPE]))
 		{
-			notification(`${nSrc.ty}s are not allowed to be added to ${nTarget.ty}s`);
+			notification(`Type ${nSrc.ty} is not allowed to be added to type ${nTarget.ty}`);
 			return;
 		}
 		
@@ -1724,6 +1788,27 @@ function checkIfLinkCreationCausesCycle(intendedParentNode,tmpTraverseNode) {
 	let result = false;
 	tmpTraverseNode[PROP_CHILDREFS].forEach(childN => { result = result || checkIfLinkCreationCausesCycle(intendedParentNode, childN)});
 	return result;
+}
+
+async function updateUserAccess(entityUID, userUID, disable=false) { 
+
+	let nEntity = _index[entityUID];
+	let nUser = _index[userUID];
+
+	if(nUser[PROP_TYPE] != TYPE_USER || (nEntity[PROP_TYPE]!= TYPE_PROJECT && nEntity[PROP_TYPE]!= TYPE_CLIENT)) {
+		notification(`Can only assign user access to clients and projects`);
+		return false;
+	}
+
+	//check if user is already linked to the entity and reject if so
+	if(!disable && nUser[PROP_RELATIONS] && (nUser[PROP_RELATIONS].filter(e => e[PROP_UID] == nEntity[PROP_UID]).length > 0))
+	{
+		return false;
+	}
+
+	//do the update:
+	await linkNode(nUser, nEntity, disable);
+	return true;
 }
 
 // right-click context menu component for tree-items
@@ -1798,7 +1883,6 @@ var v_view_default = new Vue({
 			if(historyPush(HISTORY_VIEWNODE,id))
 				v_action_funcs['view'](id);
 		},
-		//clickImport($event,v.config.nodeinfo.uid)
 		clickImport: function(e, id) {
 			if(historyPush(HISTORY_VIEWNODE,id))
 				v_action_funcs['import'](id);
@@ -1817,6 +1901,49 @@ var v_view_default = new Vue({
 				await v_action_funcs['copy'](srcNodeID,item[PROP_UID]);
 			else
 				await v_action_funcs['move'](srcNodeID,item[PROP_UID]);
+		},
+	}
+});
+
+
+var v_view_user = new Vue({
+	el: '#v_view_user',
+	data: { 
+	   v: _panesIndex['view']['user'].v
+	},
+	computed: {
+	},
+	methods : {
+        getTypeIcon: function (node) {
+			let type = node[PROP_TYPE] || 'unknown';
+			let tConf = _typeConfigs[type];
+			return (tConf) ? tConf.iconClassName : 'ico-miscfile';
+        }, 
+		viewNode: function(e, id) {
+			if(historyPush(HISTORY_VIEWNODE,id))
+				v_action_funcs['view'](id);
+		},
+		clickRemove: async function(evt,entityUID) {
+			let item = this.v.config.nodeinfo;
+			console.log(item[PROP_UID],' user remove link to ',entityUID);
+			if (await updateUserAccess(entityUID, item[PROP_UID], disable=true)){
+				let entityNode = _index[entityUID];
+				if(entityNode[PROP_TYPE] == TYPE_CLIENT)
+					this.v.config.adminOfClients = this.v.config.adminOfClients.filter(i => i[PROP_UID]!= entityUID);
+				else if(entityNode[PROP_TYPE] == TYPE_PROJECT)
+				this.v.config.canAccessProjects = this.v.config.canAccessProjects.filter(i => i[PROP_UID]!= entityUID);
+			}
+		},
+		onDrop: async function (evt) {
+			const entityUID = evt.dataTransfer.getData('itemID');
+			let item = this.v.config.nodeinfo;
+			if (await updateUserAccess(entityUID, item[PROP_UID])){
+				let entityNode = _index[entityUID];
+				if(entityNode[PROP_TYPE] == TYPE_CLIENT)
+					this.v.config.adminOfClients.push(entityNode);
+				else if(entityNode[PROP_TYPE] == TYPE_PROJECT)
+					this.v.config.canAccessProjects.push(entityNode);
+			}
 		},
 	}
 });
@@ -1914,7 +2041,7 @@ var v_edit_default = new Vue({
 	},
 	methods : {
         getTypeName: function (id) {
-			return _index[id][PROP_TYPE];
+			return _index[id] && _index[id][PROP_TYPE];
         }, 
 		vSubmit :  function(){ 
 			handleSubmit('edit', 'default');
@@ -1955,7 +2082,7 @@ var v_testform = new Vue({
 	},
 	methods : {
         getTypeName: function (id) {
-			return _index[id][PROP_TYPE];
+			return _index[id] && _index[id][PROP_TYPE];
         }, 
 		vSubmit :  function(){ 
 			handleSubmit('edit', 'testtaskagent');

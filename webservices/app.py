@@ -2,104 +2,44 @@
 
 from fastapi import FastAPI, Header, Depends, HTTPException, UploadFile, Form, Request, Response, status
 from fastapi.responses import StreamingResponse
-import importers
-import generators
 import importlib
 import json
-import multiprocessing
-import tasksched
-import notifier
 import logger
 import appconfig
 import authhelpers
+import accesscontrol as AC
 import collablio.client as cclient
 import collablio.node as cnode
 
 app = FastAPI()
 
-# launch tasksched
-t_tasksched = multiprocessing.Process(target=tasksched.run)
-t_tasksched.start()
-
-# launch notifier
-t_notifier = multiprocessing.Process(target=notifier.run)
-t_notifier.start()
-
-# load plugins
-# importers
-Importers = {}
-
-for m in importers.__all__:
-  try:
-    importer_module = importlib.import_module('importers.'+m)
-    Importers[m] = importer_module
-    logger.logEvent(f'module: {m}')
-  except Exception as e:
-    logger.logEvent(str(e))
-
-logger.logEvent(Importers)
-
-# generators
-Generators = {}
-
-for m in generators.__all__:
-  try:
-    generator_module = importlib.import_module('generators.'+m)
-    Generators[m] = generator_module
-    logger.logEvent(f'module: {m}')
-  except Exception as e:
-    logger.logEvent(str(e))
-
-print(Generators)
-
 client = cclient.client
 
-# can use global dependencies to apply auth to every endpoint
-# or see individual path dependencies with /headertest2 endpoint
-#app = FastAPI(dependencies=[Depends(auth_check)])
 
-ALLOWLIST_ROUTEPREFIXES = [
+ANONYMOUS_ROUTE_PREFIXES = [
    "ssoconfig",
    "login",
    "debug"
 ]
 
-def returnStatus(statuscode):
-    lookup = {
-        "400": status.HTTP_400_BAD_REQUEST,
-        "401": status.HTTP_401_UNAUTHORIZED,
-        "403": status.HTTP_403_FORBIDDEN,
-        "404": status.HTTP_404_NOT_FOUND
-    }
-    response = Response()
-    response.status_code = lookup[statuscode]
-    return response
 
-"""
-you can use request.state.your_custom_param  to pass data on to the route handlers from the middleware
-https://stackoverflow.com/questions/64602770/how-can-i-set-attribute-to-request-object-in-fastapi-from-middleware
-"""
+authMiddleware = authhelpers.AuthMiddleware(
+    anonymousRoutePrefixes=ANONYMOUS_ROUTE_PREFIXES, 
+    otherConditions=AC.CheckAccessForRequest
+    )
+
+def getUserData(request: Request):
+    return request.state.usrdata
+
+def getNodeData(request: Request):
+    return request.state.nodeData
+
+
 @app.middleware("http")
 async def check_auth(request: Request, call_next):
-    p = request.url.path
-    prefix = p.split("/")[1]
-    if prefix not in ALLOWLIST_ROUTEPREFIXES:
-        auth_hdr = request.headers.get('Authorization')
-        '''remove the leading "Bearer" string'''
-        if auth_hdr:
-            parts = auth_hdr.split(' ')
-            auth_hdr = parts[1] if len(parts) > 1 else None
-        else:
-            auth_hdr = request.cookies.get('Authorization')
-        if not auth_hdr:
-            return returnStatus("400")
-
-        try:
-            usrdata = authhelpers.get_usrdata_if_loggedin(auth_hdr)
-            request.state.usrdata = usrdata
-        except Exception as e:
-            return returnStatus("401")
-
+    response = await authMiddleware.getAuthorisation(request)
+    if response:
+        return response
     response = await call_next(request)
     return response
 
@@ -118,38 +58,6 @@ def get_tmpauth(request: Request):
     return response
 
 
-
-# curl -kv -X POST  -F 'file=@test.js' -F 'metadata={"a":"123"}' https://10.3.3.83/webservice/import/example
-@app.post("/import/{importer_name}")
-async def run_import(importer_name: str, file: UploadFile, request: Request, metadata: str = Form()):
-    if importer_name not in Importers:
-        raise HTTPException(status_code=404, detail=f"unknown importer {importer_name}")
-    '''
-    - parse metadata
-    - importer = Importers[importer_name]
-    - importer.do_import(file, metadata)
-    '''
-    metadata_json = json.loads(metadata)
-    importer = Importers[importer_name]
-    import_result = await importer.do_import(file, metadata_json)
-    return {"importer_name": importer_name, "filename": file.filename, "metadata": metadata_json, "result": import_result}
-
-
-@app.post("/generate/{generator_name}")
-async def run_generate(generator_name: str, request: Request):
-    if generator_name not in Generators:
-        raise HTTPException(status_code=404, detail=f"unknown generator {generator_name}")
-    '''
-    - parse metadata
-    - importer = Importers[importer_name]
-    - importer.do_import(file, metadata)
-    '''
-    metadata_dict = await request.json()
-    generator = Generators[generator_name]
-    generator_result = await generator.generate(metadata_dict)
-    return {"result": generator_result}
-
-
 @app.get("/ssoconfig")
 async def get_ssoconfig():
     return {"sso": appconfig.getValue('sso')}
@@ -161,27 +69,91 @@ async def post_loginsso(sso_type: str, request: Request):
         auth_token = authhelpers.login_oidc_aws(request)
     return {"token": auth_token}
 
-@app.get("/debug/req_headers")
-async def do_debug(request: Request):
-    if not appconfig.getValue('debug'):
-        return {}
-    return {"requestdata":request.headers}
-
 @app.post("/login/default")
 async def post_logindefault(request: Request):
     logindata = await request.json()
     auth_token = authhelpers.login_default(logindata)
     return {"token": auth_token}
 
-@app.post("/nodes")
-async def api_nodespost(request: Request):
-    nodesdata = await request.json()
-    return client.fetchNodesPostObj(nodesdata)
+@app.get("/init")
+async def api_init(request: Request):
+    userData = getUserData(request)
+    user_uid = userData.get('uid')
+    querydata = {
+        "rootIds": [user_uid],
+        "rootQuery": None,
+        "recurse": "lnk",
+        "depth": 1,
+        "filters": {
+            "or": [
+                {"field": "ty","op": "eq","val": "Client"},
+                {"field": "ty","op": "eq","val": "Project"}
+            ]
+        },
+        "select":["uid","ty","l","d","c","a","e","m"]
+    }
+    nodesReturned = client.ExecQuery(querydata)
+    return AC.GenerateResponse(nodesReturned, userData)
+
+
+@app.get("/Project/{es}")
+async def api_get_project(request: Request, es: str):
+    userData = getUserData(request)
+    nodeData = getNodeData(request)
+    user_uid = userData.get('uid')
+    querydata = {
+        "rootIds": [nodeData[0].get('uid')],
+        "rootQuery": None,
+        "recurse": "out",
+        "depth": 1,
+        "filters": {
+            "or": [
+                {"field": "ty","op": "eq","val": "Folder"},
+                {"field": "ty","op": "eq","val": "Note"},
+            ]
+        },
+        "select":["uid","ty","l","d","c","a","e","m"]
+    }
+    nodesReturned = client.ExecQuery(querydata)
+    return AC.GenerateResponse(nodesReturned, userData)
+
+
+@app.get("/debug/req_headers")
+async def do_debug(request: Request):
+    if not appconfig.getValue('debug'):
+        return {}
+    return {"requestdata":request.headers}
+
+@app.get("/debug/test")
+def get_debug_test(request: Request):
+    response = Response(json.dumps({"result": "hello"}))
+    return response
+
+@app.post("/debug/test")
+async def post_debug_test(request: Request):
+    reqdata = await request.json()
+    response = Response(json.dumps({"result": reqdata['input']}))
+    return response
+
+@app.post("/query")
+async def api_querypost(request: Request):
+    querydata = await request.json()
+    return client.queryPostObj(querydata)
 
 @app.post("/move")
 async def api_movepost(request: Request):
     nodesdata = await request.json()
     return client.moveNodesPostObj(nodesdata)
+
+@app.post("/link")
+async def api_linkpost(request: Request):
+    nodesdata = await request.json()
+    return client.linkNodesPostObj(nodesdata)
+
+@app.post("/unlink")
+async def api_unlinkpost(request: Request):
+    nodesdata = await request.json()
+    return client.unlinkNodesPostObj(nodesdata)
 
 @app.post("/upsert")
 async def api_upsertpost(request: Request):
@@ -189,11 +161,11 @@ async def api_upsertpost(request: Request):
     return client.upsertNodesPostObj(nodesdata)
 
 @app.post("/upload")
-def api_uploadfile(filedata: UploadFile, _p: str = Form()): #_p: Annotated[str, Form()],):
+def api_uploadfile(filedata: UploadFile, p: str = Form()):
     form = cclient.MultiPartForm()
     form.add_field('type', 'file_upload')
-    form.add_field('_p', _p)
-    form.add_file('filedata', filedata.filename, fileHandle=filedata.file) #open(filedata, "rb"))
+    form.add_field('_p', p)
+    form.add_file('filedata', filedata.filename, fileHandle=filedata.file)
     return client.createFileNode(form)
 
 
@@ -219,50 +191,91 @@ async def get_attachment(attachment_uid: str, timestamp: str, request: Request):
         depth = 0, 
         body = True)
 
+
 @app.get("/test/checklogin")
 async def do_testchecklogin():
 
     return {"check":"ok"}
 
 
-'''
-await request.json()
+"""
+public class QueryOptionsClause
+{
+    public List<QueryOptionsClause>? and { get; set; } = null;
+    public List<QueryOptionsClause>? or { get; set; } = null;
+    public string? field { get; set; } = null;
+    public string? op { get; set; } = null;
+    public string? val { get; set; } = null;
+}
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+public class QueryOptions
+{
+    public List<string>? rootIds { get; set; }
+    public QueryOptionsClause? rootQuery { get; set; } //if present, then ignore rootIds, recurse and depth
+    public string recurse { get; set; } = "out";
+    public uint depth { get; set; } = 0;
+    public QueryOptionsClause? filters { get; set; }
+    public List<string>? select { get; set; }
+}
 
-@app.get("/foobar")
-async def foobar():
-    return {"message": "Hello Foobar"}
+# query (recurse outward from rootIds)
+{
+  "rootIds": ["0x2"], //can set this to [] and collablio will replace it with the root node ID
+  "rootQuery": null,
+  "recurse": "out",
+  "depth": 20,
+  "filters": {
+    "field": "m",
+    "op": "gt",
+    "val": "0"
+  },
+  "select":["uid","ty","l","d","c"]
+}
 
-@app.get("/number/{id}")
-async def foobar(id: int):
-    return {"message": f"Hello int {id}"}
+# query (dgraph rootQuery)
+{
+  "rootIds": null,
+  "rootQuery": {
+    "field": "m",
+    "op": "gt",
+    "val": "0"
+  },
+  "recurse": null,
+  "filters": {
+    "field": "m",
+    "op": "gt",
+    "val": "0"
+  },
+  "select":["uid","ty","l","d","c"]
+}
 
+# upsert
+[
+    {
+        "uid": "",
+        "ty": "Annotation",
+        "l": "unique-label",
+        "d": "Human Readable Label",
+        "c": "{customdata:123}",
+        "in": [
+            {
+                "uid": "0x2"
+            }
+        ],
+        "out": [],
+        "lnk": []
+    }
+]
 
-# The query is the set of key-value pairs that go after the ? in a URL, separated by & characters.
-# For example, in the URL:
-# http://127.0.0.1:8000/items/?skip=0&limit=10
-
-fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
-@app.get("/items/")
-async def read_item(skip: int = 0, limit: int = 2, msg: str = 'nil'):
-    print(f"msg: {msg}")
-    return fake_items_db[skip : skip + limit]
-
-# curl -kv -H 'x-value: laefjejflfk' https://10.3.3.83/webservice/headertest
-@app.get("/headertest")
-async def headertest(x_value: str = Header(default='x')):
-    return {"message": f"x_value: {x_value}"}
-
-
-@app.get("/headertest2", dependencies=[Depends(auth_check)])
-async def headertest2():
-    return {"message": "OK"}
-
-# curl -kv -X POST  -F 'file=@test.js' -F 'metadata={"a":"123"}' https://10.3.3.83/webservice/uploadfile/xuhdh
-@app.post("/uploadfile/{testparam}")
-async def create_upload_file(testparam: str, file: UploadFile, metadata: str = Form()):
-    return {"testparam": testparam, "filename": file.filename, "metadata": json.loads(metadata)}
-'''
+# move
+{
+  "nodes": [
+    "0x13890"
+  ],
+  "parents": [
+    "0x6"
+  ],
+  "children": [],
+  "newparent": "0x2fb9"
+}
+"""

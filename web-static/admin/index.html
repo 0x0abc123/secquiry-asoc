@@ -450,6 +450,56 @@
 			</div>
 		</div>
 
+		<div id="view_user" class="box content" style="display: none">
+			<div>test</div>
+			<div id="v_view_user">
+				<h2><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(v.config.nodeinfo)"></use></svg> {{v.config.nodeinfo.l}}</h2>
+				<div class="mpprojects">
+					<div class="box">
+						<p class="subtitle">Detail</p>
+						<div class="mono">{{v.config.nodeinfo.d}}</div>
+					</div>
+					<div class="box">
+						<p class="subtitle">Custom Data Field</p>
+						<div class="mono">{{v.config.nodeinfo.c}}</div>
+					</div>
+
+					<div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
+						<p class="subtitle">Clients that User is Administrator of</p>
+						<div v-for="(child, index) in v.config.adminOfClients" class="mb-1">	
+							<div class="columns is-vcentered">	
+								<div class="column is-6"><span>
+								<span class="button is-info is-small" @click="clickRemove($event,child.uid)">&#10060; Remove</span>
+								<span class="ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</span>
+								</span></div>
+								<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
+							</div>	
+						</div>
+						<div class="box" v-if="v.config.adminOfClients.length < 1">
+							<p>No Clients</p>
+						</div>
+					</div>
+
+					<div class="box"  @drop='onDrop($event)' @dragover.prevent @dragenter.prevent>
+						<p class="subtitle">Projects that User has Access to</p>
+						<div v-for="(child, index) in v.config.canAccessProjects" class="mb-1">	
+							<div class="columns is-vcentered">	
+								<div class="column is-6"><span>
+								<span class="button is-info is-small" @click="clickRemove($event,child.uid)">&#10060; Remove</span>
+								<span class="ptr pl-2" @click="viewNode($event,child.uid)"><svg class="inln" width='1em' height='1em' viewBox='0 0 24 24'><use :href="'#'+getTypeIcon(child)"></use></svg> {{child.l}}</span>
+								</span></div>
+								<div class="column is-6 ptr pl-5" @click="viewNode($event,child.uid)">{{child.d}}</div>
+							</div>	
+						</div>
+						<div class="box" v-if="v.config.canAccessProjects.length < 1">
+							<p>No Projects</p>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+	
 
 		<div id="view_findings" class="box content" style="display: none">
 		<!--////VueBinding////-->
@@ -1079,7 +1129,18 @@
  </div>
 </div><!--end modal div-->	
 
+<div id="modal_div_loading" class="modal">
+	<div class="modal-card">
+	  <!--div for modal pane-->
+	  <div style="display: block">
+		<section class="modal-card-body">
+			<h1 class="title">&#10227; Loading...</h1>
+	  </section>
 
+	  </div><!--end modal pane-->	
+   </div>
+</div><!--end modal div-->	
+  
 <div id="testdiv" style="background-color: green; width: 50%; height: 50%; position: absolute; top: 100px; left: 100px; display: none">
 test
 </div>

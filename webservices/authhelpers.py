@@ -11,6 +11,7 @@ import time
 import urllib.request
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+from fastapi import FastAPI, Header, Depends, HTTPException, UploadFile, Form, Request, Response, status
 
 PASSWD_FIELD = 'pass'
 SSO_FIELD = 'sso'
@@ -102,6 +103,7 @@ def verify_password(plaintxtpswd, salt_and_derivedpasswd):
     expectedkey = cryptohelpers.deriveKey(plaintxtpswd,ssalt).decode("utf-8")
     return expectedkey == spass
 
+#TODO: check expiry time on JWT
 def verify_jwt_get_uid(jwtbearertoken):
     payload = jwt.decode(jwtbearertoken, JWT_SECRET_KEY, algorithms=[JWT_ALG])
     return payload.get(cnode.PROP_UID)
@@ -116,6 +118,7 @@ def get_usrdata_if_loggedin(jwtbearertoken):
             raise Exception("User is not logged in")        
     raise Exception("JWT Payload missing UID")
 
+#TODO: set expiry time on JWT
 def login_default(logindata, ssologin=False):
     global loggedin_users
     jsonResponse = client.fetchNodes(field = cnode.PROP_LABEL, op = 'eq', val = logindata['username'], ntype = cnode.TYPE_USER)
@@ -160,3 +163,55 @@ def test_create_user(userdata):
     newusernode.CustomData = json.dumps({PASSWD_FIELD:hash_password(newusrpswd), SSO_FIELD:newusrsso})
     nodesToUpsert = [newusernode]
     return client.upsertNodes(nodesToUpsert)
+
+def returnStatus(statuscode):
+    lookup = {
+        "400": status.HTTP_400_BAD_REQUEST,
+        "401": status.HTTP_401_UNAUTHORIZED,
+        "403": status.HTTP_403_FORBIDDEN,
+        "404": status.HTTP_404_NOT_FOUND
+    }
+    response = Response()
+    response.status_code = lookup[statuscode]
+    return response
+
+class AuthMiddleware:
+
+    def __init__(self, anonymousRoutePrefixes = [], otherConditions = None):
+        self.anonymous_routes = anonymousRoutePrefixes
+        self.other_conditions = otherConditions
+
+    """
+    you can use request.state.your_custom_param  to pass data on to the route handlers from the middleware
+    https://stackoverflow.com/questions/64602770/how-can-i-set-attribute-to-request-object-in-fastapi-from-middleware
+
+    - this is a middleware function that is called for every request
+    - it checks if the request is for an anonymous route
+    - if it is not anonymous, it checks if the user is logged in and populates the user data in the request state
+    - if validation fails, it will return an appropriate response object with the status code set
+    - otherwise it will return None
+    """
+    async def getAuthorisation(self, request):
+        p = request.url.path
+        prefix = p.split("/")[1]
+        if prefix not in self.anonymous_routes:
+            auth_hdr = request.headers.get('Authorization')
+            '''remove the leading "Bearer" string'''
+            if auth_hdr:
+                parts = auth_hdr.split(' ')
+                auth_hdr = parts[1] if len(parts) > 1 else None
+            else:
+                auth_hdr = request.cookies.get('Authorization')
+            if not auth_hdr:
+                return returnStatus("400")
+
+            try:
+                usrdata = get_usrdata_if_loggedin(auth_hdr)
+                if self.other_conditions:
+                    conditionsMet = await self.other_conditions(request, usrdata)
+                    if not conditionsMet:
+                        return returnStatus("403")
+                request.state.usrdata = usrdata
+            except Exception as e:
+                return returnStatus("401")
+        return None

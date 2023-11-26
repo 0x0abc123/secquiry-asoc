@@ -112,8 +112,6 @@ word-wrap: anywhere;
 }
 
 #page {
-  //height: 90vh;
-
   height: 100%;
   display: grid;
   grid-template-areas: 'left_pane dragbar right_pane';
@@ -122,7 +120,6 @@ word-wrap: anywhere;
 }
 
 #left_pane {
- // overflow: auto;
   grid-area: left_pane;
    overflow-y: scroll;
 	height: 100%;
@@ -135,15 +132,11 @@ word-wrap: anywhere;
 }
 
 #right_pane {
-  //overflow: auto;
   grid-area: right_pane;
    overflow-y: scroll;
 	height: 100%;
 }
 
 #modal_div {
-//	  z-index: 100;
-//	position: absolute;
-//	top: 0px;
-//	left: 0px;
+
 }
